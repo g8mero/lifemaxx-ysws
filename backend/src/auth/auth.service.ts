@@ -40,17 +40,21 @@ export class AuthService {
   private readonly tokenUrl = 'https://auth.hackclub.com/oauth/token';
   private readonly userinfoUrl = 'https://auth.hackclub.com/oauth/userinfo';
 
-  private readonly scopes = [
-    'openid',
-    'email',
-    'name',
-    'profile',
-    'birthdate',
-    'address',
-    'verification_status',
-    'slack_id',
-    'basic_info',
-  ].join(' ');
+  // HCA rejects the whole request if any scope isn't enabled on the OAuth app,
+  // so HCA_SCOPES lets an app without birthdate/address/basic_info still log in.
+  private readonly scopes =
+    process.env.HCA_SCOPES ??
+    [
+      'openid',
+      'email',
+      'name',
+      'profile',
+      'birthdate',
+      'address',
+      'verification_status',
+      'slack_id',
+      'basic_info',
+    ].join(' ');
 
   constructor(
     private configService: ConfigService,

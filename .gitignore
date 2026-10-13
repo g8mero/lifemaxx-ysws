@@ -13,9 +13,11 @@ backups/
 *.sql.gz
 
 # Env
+/backend/.env
+/frontend/.env
 .env
 .env.*
-!.env.example
+.env.example
 !.env.test
 
 # Per-deployment YSWS config (real program name/dates/admin emails/slack ids) —
