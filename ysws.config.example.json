@@ -1,34 +1,34 @@
 {
   "program": {
-    "name": "Example YSWS",
-    "shortName": "example-ysws",
-    "tagline": "Ship something. Get rewarded.",
-    "description": "A You-Ship-We-Ship platform where participants build projects, log devlogs, and earn shop credit for shipping.",
+    "name": "lifemaxx",
+    "shortName": "lifemaxx",
+    "tagline": "Build your academic comeback today."
+    "description": "A You-Ship-We-Ship program where teens build anything to help them track, gamify, or streamline their goals and earn gains to spend at the shop on goodies to get them going:  caffeine, school supplies, tech, and workout essentials",
     "url": "https://example-ysws.example.com",
-    "organizer": "Your Organization",
-    "organizerUrl": "https://example.com"
+    "organizer": "Hack CLub",
+    "organizerUrl": "https://hackclub.com"
   },
   "currency": {
-    "nameSingular": "credit",
-    "namePlural": "credits",
-    "symbol": "CR",
+    "nameSingular": "gains",
+    "namePlural": "gains",
+    "symbol": "$G",
     "iconAsset": "/images/currency-icon.svg"
   },
   "event": {
-    "startDate": "2027-01-01",
-    "endDate": "2027-01-08",
+    "startDate": "TBD",
+    "endDate": "TBD",
     "location": "Remote",
     "timezone": "UTC"
   },
   "admin": {
-    "contactEmail": "admin@example.com",
+    "contactEmail": "coming soon",
     "superAdminSlackIds": []
   },
   "integrations": {
-    "slackWorkspaceId": "",
+    "slackWorkspaceId": "C0C857T3JTX",
     "hackatimeEnabled": true,
     "hcbEnabled": false,
-    "attendEventSlug": "example-ysws",
+    "attendEventSlug": "lifemaxx",
     "botReviewEnabled": false
   },
   "theme": {
@@ -37,7 +37,7 @@
     "faviconAsset": "/favicon.png"
   },
   "shop": {
-    "categories": ["stickers", "hardware", "grants"]
+    "categories": ["tech", "fuel", "productivity"]
   },
   "social": {
     "slackInviteUrl": "",
