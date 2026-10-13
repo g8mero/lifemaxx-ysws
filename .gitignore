@@ -20,11 +20,6 @@ backups/
 .env.example
 !.env.test
 
-# Per-deployment YSWS config (real program name/dates/admin emails/slack ids) —
-# commit only the example, operators fill in their own ysws.config.json locally
-ysws.config.json
-!ysws.config.example.json
-
 # OS
 .DS_Store
 Thumbs.db

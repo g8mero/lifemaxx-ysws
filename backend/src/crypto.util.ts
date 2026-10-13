@@ -39,20 +39,35 @@ export function decrypt(encoded: string, keyHex: string): string {
 }
 
 /**
+ * Returns DB_ENCRYPTION_KEY, or throws saying what's wrong with it. Reports
+ * only the length — never the value — so it's safe to log.
+ */
+export function getEncryptionKey(): string {
+  const key = process.env.DB_ENCRYPTION_KEY;
+  if (!key) throw new Error('DB_ENCRYPTION_KEY is not set');
+  if (!/^[0-9a-fA-F]{64}$/.test(key)) {
+    throw new Error(
+      `DB_ENCRYPTION_KEY must be exactly 64 hex characters (0-9, a-f); got ${key.length} characters` +
+        (/^[0-9a-fA-F]*$/.test(key) ? '' : ', including non-hex ones') +
+        `. Generate one: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`,
+    );
+  }
+  return key;
+}
+
+/**
  * TypeORM column transformer that encrypts on write and decrypts on read.
  * Reads DB_ENCRYPTION_KEY from process.env (available after ConfigModule.forRoot).
  */
 export const encryptedTransformer: ValueTransformer = {
   to(value: string | null): string | null {
     if (!value) return value;
-    const key = process.env.DB_ENCRYPTION_KEY;
-    if (!key) throw new Error('DB_ENCRYPTION_KEY is not set');
+    const key = getEncryptionKey();
     return encrypt(value, key);
   },
   from(value: string | null): string | null {
     if (!value) return value;
-    const key = process.env.DB_ENCRYPTION_KEY;
-    if (!key) throw new Error('DB_ENCRYPTION_KEY is not set');
+    const key = getEncryptionKey();
     return decrypt(value, key);
   },
 };

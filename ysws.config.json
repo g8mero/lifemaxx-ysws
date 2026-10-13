@@ -1,0 +1,48 @@
+{
+  "program": {
+    "name": "lifemaxx",
+    "shortName": "lifemaxx",
+    "tagline": "Build your academic comeback today.",
+    "description": "Teens build anything to help them track, gamify, or streamline their goals and earn gains to spend at the shop on goodies to get them going:  caffeine, school supplies, tech, and workout essentials",
+    "url": "https://lifemaxx.dino.icu",
+    "organizer": "Hack Club",
+    "organizerUrl": "https://hackclub.com"
+  },
+  "currency": {
+    "nameSingular": "gains",
+    "namePlural": "gains",
+    "symbol": "$G",
+    "iconAsset": "/images/currency-icon.svg"
+  },
+  "event": {
+    "startDate": "TBD",
+    "endDate": "TBD",
+    "location": "Remote",
+    "timezone": "UTC"
+  },
+  "admin": {
+    "contactEmail": "[insert contact email]",
+    "superAdminSlackIds": ["U0APWRCML2J"]
+  },
+  "integrations": {
+    "slackWorkspaceId": "C0C857T3JTX",
+    "hackatimeEnabled": true,
+    "hcbEnabled": false,
+    "attendEventSlug": "lifemaxx",
+    "botReviewEnabled": false
+  },
+  "theme": {
+    "accentColor": "#2F6F4F",
+    "logoAsset": "/images/logo.svg",
+    "faviconAsset": "/favicon.png"
+  },
+  "shop": {
+    "categories": ["tech", "fuel", "productivity"]
+  },
+  "social": {
+    "slackInviteUrl": "",
+    "githubUrl": "",
+    "twitterUrl": "",
+    "instagramUrl": ""
+  }
+}

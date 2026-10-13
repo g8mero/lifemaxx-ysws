@@ -1,5 +1,3 @@
-import exampleConfig from '../../../../ysws.config.example.json';
-
 export interface YswsPublicConfig {
 	program: { name: string; shortName: string; tagline: string; description: string };
 	currency: { nameSingular: string; namePlural: string; symbol: string };
@@ -20,6 +18,13 @@ const realConfigModules = import.meta.glob('../../../../ysws.config.json', {
 	import: 'default'
 });
 const realConfig = Object.values(realConfigModules)[0] as Record<string, unknown> | undefined;
+// The example is globbed too (not a static import) so a fork that deletes
+// ysws.config.example.json and keeps only its own ysws.config.json still builds.
+const exampleConfigModules = import.meta.glob('../../../../ysws.config.example.json', {
+	eager: true,
+	import: 'default'
+});
+const exampleConfig = Object.values(exampleConfigModules)[0] as Record<string, unknown> | undefined;
 
 let cached: YswsPublicConfig | undefined;
 
@@ -33,6 +38,7 @@ export function getPublicYswsConfig(): YswsPublicConfig {
 	if (cached) return cached;
 
 	const full = (realConfig ?? exampleConfig) as any;
+	if (!full) throw new Error('No ysws.config.json or ysws.config.example.json found. See SETUP.md.');
 	cached = {
 		program: full.program,
 		currency: full.currency,

@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { json } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { getEncryptionKey } from './crypto.util';
 
 process.on('unhandledRejection', (reason) => {
   const logger = new Logger('UnhandledRejection');
@@ -11,6 +12,9 @@ process.on('unhandledRejection', (reason) => {
 });
 
 async function bootstrap() {
+  // Fail at boot with a readable message rather than on the first login.
+  getEncryptionKey();
+
   const app = await NestFactory.create(AppModule);
 
   app.use(json({ limit: '50mb' }));
