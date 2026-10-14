@@ -99,7 +99,6 @@
   }
   let screenshotFiles = $state<(File | null)[]>([null, null]);
   let screenshotPreviews = $state<string[]>(['', '']);
-  let activeScreenshot = $state(0);
   let hackatimeProject = $state<string[]>([]);
   let isUpdateProject = $state(false);
   let usedAi = $state(false);
@@ -470,7 +469,6 @@
     readmeUrl = '';
     screenshotFiles = [null, null];
     screenshotPreviews = ['', ''];
-    activeScreenshot = 0;
     hackatimeProject = [];
     hackatimeOpen = false;
     isUpdateProject = false;
@@ -643,6 +641,18 @@
     formError = '';
     input.value = '';
   }
+
+  function removeScreenshot(idx: number) {
+    screenshotFiles[idx] = null;
+    screenshotPreviews[idx] = '';
+    // Keep the remaining one in the first slot so new uploads fill from the start.
+    if (idx === 0 && screenshotPreviews[1]) {
+      screenshotFiles = [screenshotFiles[1], null];
+      screenshotPreviews = [screenshotPreviews[1], ''];
+    }
+  }
+
+  let screenshotCount = $derived(screenshotPreviews.filter(Boolean).length);
 
   function fileToDataUri(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -1480,9 +1490,8 @@
     <!-- Approved project: read-only summary + resubmit form -->
     <section class="section section-resubmit">
       <div class="section-inner">
-        <button class="form-cancel" onclick={resetForm}>&times;</button>
-
         <div class="approved-summary">
+          <div class="win-bar sheet-bar" style="--pad: 20px"><span class="lights"><button type="button" class="light-close" aria-label="Close" title="Close" onclick={resetForm}></button><i></i><i></i></span></div>
           <div class="approved-summary-row">
             {#if editingProject.screenshot1Url}
               <img class="approved-summary-thumb" src={editingProject.screenshot1Url} alt="Screenshot" />
@@ -1581,7 +1590,6 @@
     <div class="create-project-form">
       <div class="form-header">
         <h2 class="section-title">{editingProject ? 'Edit project' : 'New project'}</h2>
-        <button class="form-cancel" onclick={resetForm} aria-label="Close">&times;</button>
       </div>
 
       {#if editingProject?.status === 'unreviewed' && editingProjectPrecheck}
@@ -1633,6 +1641,7 @@
       {/if}
 
       <div class="form-grid">
+        <div class="win-bar sheet-bar" style="--pad: 28px"><span class="lights"><button type="button" class="light-close" aria-label="Close" title="Close" onclick={resetForm}></button><i></i><i></i></span></div>
         <div class="form-group">
           <label class="form-label" for="project-name">Project Name <span class="required">*</span></label>
           <input id="project-name" type="text" class="form-input" maxlength={50} placeholder="My Awesome Project" bind:value={projectName} />
@@ -1673,28 +1682,35 @@
         <div class="form-row form-row-top">
           <div class="form-group screenshot-group">
             <label class="form-label" for="screenshot">Screenshots</label>
-            <div class="screenshot-row">
-              <div class="screenshot-controls">
-                <label class="upload-btn" for="screenshot">
-                  <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
-                  <span class="upload-btn-text">Upload</span>
-                </label>
-                <div class="screenshot-tabs">
-                  <button type="button" class="screenshot-tab" class:active={activeScreenshot === 0} onclick={() => { activeScreenshot = 0; }}>1</button>
-                  <button type="button" class="screenshot-tab" class:active={activeScreenshot === 1} class:disabled-field={!screenshotPreviews[1]} disabled={!screenshotPreviews[1]} onclick={() => { activeScreenshot = 1; }}>2</button>
-                </div>
-              </div>
-              <div class="screenshot-box">
-                {#if screenshotPreviews[activeScreenshot]}
-                  <img src={screenshotPreviews[activeScreenshot]} alt="Preview {activeScreenshot + 1}" class="screenshot-preview" />
-                  <button class="screenshot-remove" onclick={() => { screenshotFiles[activeScreenshot] = null; screenshotPreviews[activeScreenshot] = ''; if (activeScreenshot === 1) activeScreenshot = 0; }}>&times;</button>
+            <label class="bl-folder shots-folder" class:full={screenshotCount >= 2} for={screenshotCount < 2 ? 'screenshot' : undefined} title={screenshotCount < 2 ? 'Add a screenshot' : 'Folder full'}>
+              <svg class="bl-folder-back" viewBox="0 0 200 160" aria-hidden="true">
+                <path fill="#2f9be3" d="M8 22c0-8 6-14 14-14h46c6 0 11 2 15 6l9 8h86c8 0 14 6 14 14v102c0 8-6 14-14 14H22c-8 0-14-6-14-14z" />
+                {#if screenshotCount === 0}
+                  <g class="bl-sheet">
+                    <rect x="24" y="30" width="152" height="100" rx="5" fill="#fff" />
+                    <text x="100" y="62" text-anchor="middle">add screenshots</text>
+                    <text x="100" y="80" text-anchor="middle">of the thing</text>
+                  </g>
                 {/if}
-              </div>
-            </div>
+              </svg>
+              <span class="bl-pics">
+                {#each screenshotPreviews as src, i (i)}
+                  {#if src}
+                    <span class="bl-pic" style="--i: {i}">
+                      <img src={src} alt="Screenshot {i + 1}" />
+                      <button type="button" class="bl-pic-remove" aria-label="Remove screenshot" onclick={(e) => { e.preventDefault(); e.stopPropagation(); removeScreenshot(i); }}>&times;</button>
+                    </span>
+                  {/if}
+                {/each}
+              </span>
+              <svg class="bl-folder-front" viewBox="0 0 200 160" aria-hidden="true">
+                <defs><linearGradient id="shot-fg" x2="0" y2="1"><stop stop-color="#7fd4ff" /><stop offset="1" stop-color="#3fb1f3" /></linearGradient></defs>
+                <rect x="8" y="42" width="184" height="110" rx="13" fill="url(#shot-fg)" />
+              </svg>
+              {#if screenshotCount > 0}
+                <span class="bl-badge">{screenshotCount}</span>
+              {/if}
+            </label>
             <input id="screenshot" type="file" accept="image/*" class="form-file-hidden" onchange={handleScreenshot} />
             <span class="form-caption">Upload up to 2 screenshots</span>
           </div>
@@ -1845,7 +1861,7 @@
     {#if showShippingPrompt && shippingCheck}
     <section class="section section-review">
       <div class="section-inner">
-        <button class="form-cancel review-close" onclick={() => { showShippingPrompt = false; }}>&times;</button>
+        <div class="win-bar sheet-bar" style="--pad: 28px"><span class="lights"><button type="button" class="light-close" aria-label="Close" title="Close" onclick={() => { showShippingPrompt = false; }}></button><i></i><i></i></span></div>
         <h2 class="section-title">Complete Your Profile</h2>
         <p class="shipping-prompt-text">Before submitting for review, we need a few things from your Hack Club Auth profile — we use these to verify you and to ship prizes when your project is approved:</p>
         <div class="shipping-prompt-items">
@@ -1911,7 +1927,7 @@
     {#if reviewProject}
     <section class="section section-review">
       <div class="section-inner">
-        <button class="form-cancel review-close" onclick={resetForm}>&times;</button>
+        <div class="win-bar sheet-bar" style="--pad: 28px"><span class="lights"><button type="button" class="light-close" aria-label="Close" title="Close" onclick={resetForm}></button><i></i><i></i></span></div>
         <h2 class="section-title">Submit "{reviewProject.name}" for Review</h2>
         <div class="review-checklist">
           <label class="review-check">
@@ -3791,27 +3807,9 @@
     text-align: left;
   }
 
-  /* Round close button, shared by the form and the resubmit view. */
-  .form-cancel {
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-    width: 40px;
-    height: 40px;
-    margin-left: auto;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: rgb(11 11 12 / 0.06);
-    color: var(--text);
-    font-size: 24px;
-    line-height: 1;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-
-  .form-cancel:hover {
-    background: rgb(11 11 12 / 0.12);
+  /* A card's top bar with traffic lights, like the buildlog window; it spans the card edge to edge. */
+  .sheet-bar {
+    margin: calc(var(--pad) * -1) calc(var(--pad) * -1) 0;
   }
 
   .form-grid {
@@ -3966,118 +3964,16 @@
     rotate: 45deg;
   }
 
-  /* Screenshots */
-  .screenshot-row {
-    display: flex;
-    gap: 12px;
-    height: 200px;
+  /* Screenshots use the buildlog folder; screenshots are landscape, so the photos are wider. */
+  .bl-folder.shots-folder {
+    max-width: 128px;
+    margin: 24px 0 10px 8px;
   }
 
-  .screenshot-controls {
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    gap: 8px;
-    width: 112px;
-  }
-
-  .upload-btn {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    background: var(--well);
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
-  }
-
-  .upload-btn:hover {
-    border-color: var(--ink);
-  }
-
-  .upload-icon {
-    width: 28px;
-    height: 28px;
-    color: var(--text);
-  }
-
-  .upload-btn-text {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-  }
-
-  .screenshot-tabs {
-    display: flex;
-    gap: 6px;
-  }
-
-  .screenshot-tab {
-    flex: 1;
-    padding: 6px 0;
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    background: var(--well);
-    color: var(--color-text-muted);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
-  }
-
-  .screenshot-tab:hover:not(:disabled) {
-    border-color: var(--ink);
-  }
-
-  .screenshot-tab.active {
-    background: var(--pill-bg);
-    border-color: var(--paper);
-    color: var(--pill-fg);
-  }
-
-  .screenshot-box {
-    position: relative;
-    display: flex;
-    flex: 1;
-    align-items: center;
-    justify-content: center;
-    min-width: 0;
-    overflow: hidden;
-    border: 1.5px dashed var(--color-border);
-    border-radius: 8px;
-    background: var(--well);
-  }
-
-  .screenshot-preview {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-  }
-
-  .screenshot-remove {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    display: grid;
-    place-items: center;
-    width: 26px;
-    height: 26px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: rgb(11 11 12 / 0.7);
-    color: #fff;
-    font-size: 16px;
-    line-height: 1;
-    cursor: pointer;
-  }
-
-  .screenshot-remove:hover {
-    background: var(--red);
+  .shots-folder .bl-pic {
+    width: 62%;
+    aspect-ratio: 16 / 10;
+    left: calc(6% + var(--i) * 28%);
   }
 
   .form-file-hidden {
@@ -4228,19 +4124,17 @@
     gap: 28px;
   }
 
-  .section-resubmit .form-cancel {
-    position: absolute;
-    top: 0;
-    right: 0;
-  }
-
   .approved-summary {
     padding: 20px;
-    padding-right: 64px;
+    overflow: hidden;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
+  }
+
+  .approved-summary .sheet-bar {
+    margin-bottom: 18px;
   }
 
   .approved-summary-row {
@@ -6229,12 +6123,6 @@
     border: 1px solid var(--line);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
-  }
-
-  .review-close {
-    position: absolute;
-    top: 20px;
-    right: 20px;
   }
 
   .section-review .section-title {
