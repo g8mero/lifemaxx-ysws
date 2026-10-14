@@ -183,7 +183,6 @@
 		hackatimeProjectName: string[];
 		isUpdate: boolean;
 		isGolden: boolean;
-		otherHcProgram: string | null;
 		aiUse: string | null;
 		createdAt: string;
 		updatedAt: string;
@@ -380,7 +379,7 @@
 	}
 	let pastReviews = $state<ReviewRecord[]>([]);
 
-	type DevlogRecord = {
+	type BuildlogRecord = {
 		id: string;
 		projectId: string | null;
 		userId: string;
@@ -398,7 +397,7 @@
 		approvedHours: number | null;
 		createdAt: string;
 	};
-	let projectDevlogs = $state<DevlogRecord[]>([]);
+	let projectBuildlogs = $state<BuildlogRecord[]>([]);
 	type LookoutSessionRecord = {
 		id: string;
 		name: string | null;
@@ -426,10 +425,10 @@
 	let lookoutHours = $derived(
 		projectLookout ? Math.round((projectLookout.totalTrackedSeconds / 3600) * 10) / 10 : 0
 	);
-	let devlogLightbox = $state<string | null>(null);
-	function openDevlogLightbox(url: string) { devlogLightbox = url; }
-	function closeDevlogLightbox() { devlogLightbox = null; }
-	function onDevlogLightboxKey(e: KeyboardEvent) { if (e.key === 'Escape') closeDevlogLightbox(); }
+	let buildlogLightbox = $state<string | null>(null);
+	function openBuildlogLightbox(url: string) { buildlogLightbox = url; }
+	function closeBuildlogLightbox() { buildlogLightbox = null; }
+	function onBuildlogLightboxKey(e: KeyboardEvent) { if (e.key === 'Escape') closeBuildlogLightbox(); }
 
 	function fmtLookoutTracked(secs: number | null): string {
 		if (!secs || secs <= 0) return '';
@@ -438,29 +437,29 @@
 		return h > 0 ? `${h}h ${m}m tracked` : `${m}m tracked`;
 	}
 
-	async function loadProjectDevlogs(projectId: string) {
+	async function loadProjectBuildlogs(projectId: string) {
 		try {
-			const res = await fetch(`/api/admin/projects/${projectId}/devlogs`);
-			if (res.ok) projectDevlogs = await res.json();
-			else projectDevlogs = [];
+			const res = await fetch(`/api/admin/projects/${projectId}/buildlogs`);
+			if (res.ok) projectBuildlogs = await res.json();
+			else projectBuildlogs = [];
 		} catch {
-			projectDevlogs = [];
+			projectBuildlogs = [];
 		}
 	}
 
-	let devlogHoursDraft = $state<Record<string, string>>({});
-	let devlogReviewLoading = $state('');
+	let buildlogHoursDraft = $state<Record<string, string>>({});
+	let buildlogReviewLoading = $state('');
 
-	let devlogApprovedHours = $derived(
-  		projectDevlogs.reduce((s, d) => s + (d.approved ? (d.approvedHours ?? 0) : 0), 0)
+	let buildlogApprovedHours = $derived(
+  		projectBuildlogs.reduce((s, d) => s + (d.approved ? (d.approvedHours ?? 0) : 0), 0)
 	);
 
-	async function reviewDevlog(dl: DevlogRecord, approved: boolean){
-		const raw = devlogHoursDraft[dl.id] ?? String(dl.approvedHours ?? '');
+	async function reviewBuildlog(dl: BuildlogRecord, approved: boolean){
+		const raw = buildlogHoursDraft[dl.id] ?? String(dl.approvedHours ?? '');
 		const hours = parseFloat(raw);
-		devlogReviewLoading = dl.id;
+		buildlogReviewLoading = dl.id;
 		try{
-    		const res = await fetch(`/api/admin/devlogs/${dl.id}/review`, {
+    		const res = await fetch(`/api/admin/buildlogs/${dl.id}/review`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json'},
       			body: JSON.stringify({ approved, approvedHours: Number.isFinite(hours) ? hours : null }),
@@ -475,7 +474,7 @@
 			}
 		}
 	}	finally{
-		devlogReviewLoading = '';
+		buildlogReviewLoading = '';
 	}
 }
 
@@ -728,7 +727,7 @@
 			lastQuickRejectInternalNote = '';
 			hideReviewerName = false;
 			markGolden = false;
-			projectDevlogs = [];
+			projectBuildlogs = [];
 			projectLookout = null;
 			botReviewDraft = null;
 			closeAuditEmbed();
@@ -750,7 +749,7 @@
 		hideReviewerName = false;
 		showHackatimeFiles = false;
 		pastReviews = [];
-		projectDevlogs = [];
+		projectBuildlogs = [];
 		projectLookout = null;
 		botReviewDraft = null;
 
@@ -760,7 +759,7 @@
 		// approve review revokes it).
 		markGolden = !!proj?.isGolden;
 		loadReviews(projectId);
-		loadProjectDevlogs(projectId);
+		loadProjectBuildlogs(projectId);
 		loadProjectLookout(projectId);
 		loadBotReviewDraft(projectId);
 		if (proj?.status === 'unreviewed' || proj?.status === 'approved') {
@@ -3477,12 +3476,6 @@
 										<span class="proj-info-value">{selectedProject.hackatimeProjectName.join(', ')}</span>
 									</div>
 								{/if}
-								{#if selectedProject.otherHcProgram}
-									<div class="proj-info-row">
-										<span class="proj-info-label">Other HC Program:</span>
-										<span class="proj-info-value">{selectedProject.otherHcProgram}</span>
-									</div>
-								{/if}
 								{#if selectedProject.aiUse}
 									<div class="proj-info-row">
 										<span class="proj-info-label">AI Usage:</span>
@@ -3527,12 +3520,12 @@
 														projScreenIdx = 0;
 														hackatimeData = null;
 														pastReviews = [];
-														projectDevlogs = [];
+														projectBuildlogs = [];
 														projectLookout = null;
 														await Promise.all([
 															selectProject(p.id),
 															loadReviews(p.id),
-															loadProjectDevlogs(p.id),
+															loadProjectBuildlogs(p.id),
 															loadProjectLookout(p.id)
 														]);
 													}}
@@ -3871,70 +3864,70 @@
 											{/if}
 										{/if}
 
-								{#if projectDevlogs.length > 0}
+								{#if projectBuildlogs.length > 0}
 									<hr class="proj-divider" />
 									<h4 class="reviews-heading">
-										Devlogs ({projectDevlogs.length})
-										{#if devlogApprovedHours > 0}<span class="devlog-approved-total"> · {Math.round(devlogApprovedHours * 10) / 10}h approved into project</span>{/if}
+										Buildlogs ({projectBuildlogs.length})
+										{#if buildlogApprovedHours > 0}<span class="buildlog-approved-total"> · {Math.round(buildlogApprovedHours * 10) / 10}h approved into project</span>{/if}
 									</h4>
-									<div class="devlogs-list">
-										{#each projectDevlogs as dl}
-											<div class="devlog-card">
-												<div class="devlog-card-header">
-													<span class="devlog-card-author">{dl.userName ?? 'Unknown'}</span>
-													<span class="devlog-card-date">{formatDate(dl.createdAt)}</span>
+									<div class="buildlogs-list">
+										{#each projectBuildlogs as dl}
+											<div class="buildlog-card">
+												<div class="buildlog-card-header">
+													<span class="buildlog-card-author">{dl.userName ?? 'Unknown'}</span>
+													<span class="buildlog-card-date">{formatDate(dl.createdAt)}</span>
 												</div>
-												{#if dl.title}<h5 class="devlog-card-title">{dl.title}</h5>{/if}
-												<p class="devlog-card-text">{dl.text}</p>
+												{#if dl.title}<h5 class="buildlog-card-title">{dl.title}</h5>{/if}
+												<p class="buildlog-card-text">{dl.text}</p>
 												{#if dl.imageUrls && dl.imageUrls.length > 0}
-													<div class="devlog-card-images">
+													<div class="buildlog-card-images">
 														{#each dl.imageUrls as url}
-															<button type="button" class="devlog-card-image-btn" onclick={() => openDevlogLightbox(url)}>
-																<img src={url} alt="Devlog attachment" loading="lazy" />
+															<button type="button" class="buildlog-card-image-btn" onclick={() => openBuildlogLightbox(url)}>
+																<img src={url} alt="Buildlog attachment" loading="lazy" />
 															</button>
 														{/each}
 													</div>
 												{/if}
 												{#if dl.lookout}
-													<div class="devlog-card-lookout">
-														<span class="devlog-lookout-status">{dl.lookout.status}</span>
+													<div class="buildlog-card-lookout">
+														<span class="buildlog-lookout-status">{dl.lookout.status}</span>
 														{#if dl.lookout.trackedSeconds}
-															<span class="devlog-lookout-tracked"> · {fmtLookoutTracked(dl.lookout.trackedSeconds)}</span>
+															<span class="buildlog-lookout-tracked"> · {fmtLookoutTracked(dl.lookout.trackedSeconds)}</span>
 														{/if}
 														{#if dl.lookout.status === 'complete' && dl.lookout.videoUrl}
 															<video controls preload="metadata" poster={dl.lookout.thumbnailUrl ?? undefined} src={dl.lookout.videoUrl}>
 																<track kind="captions" />
 															</video>
 														{:else}
-															<span class="devlog-lookout-pending"> · timelapse not finished yet</span>
+															<span class="buildlog-lookout-pending"> · timelapse not finished yet</span>
 														{/if}
 													</div>
 												{/if}
-											<div class="devlog-review-bar">
-												<label class="devlog-hours-field">
+											<div class="buildlog-review-bar">
+												<label class="buildlog-hours-field">
 													Hours
 													<input
 														type="number" min="0" step="0.1"
-														class="devlog-hours-input"
-														value={devlogHoursDraft[dl.id] ?? (dl.approvedHours ?? '')}
-														oninput={(e) => devlogHoursDraft[dl.id] = e.currentTarget.value}
+														class="buildlog-hours-input"
+														value={buildlogHoursDraft[dl.id] ?? (dl.approvedHours ?? '')}
+														oninput={(e) => buildlogHoursDraft[dl.id] = e.currentTarget.value}
 													/>
 												</label>
 												{#if dl.lookout?.trackedSeconds}
-													<button type="button" class="devlog-hours-suggest"
-														onclick={() => devlogHoursDraft[dl.id] = ((dl.lookout?.trackedSeconds ?? 0) / 3600).toFixed(1)}
+													<button type="button" class="buildlog-hours-suggest"
+														onclick={() => buildlogHoursDraft[dl.id] = ((dl.lookout?.trackedSeconds ?? 0) / 3600).toFixed(1)}
 														title="Use the attached timelapse's tracked time">
 														lapse: {fmtLookoutTracked(dl.lookout?.trackedSeconds ?? null)}
 													</button>
 												{/if}
 												{#if dl.approved}
-													<span class="devlog-approved-tag">✓ {dl.approvedHours}h approved</span>
-													<button type="button" class="devlog-unapprove" disabled={devlogReviewLoading === dl.id}
-														onclick={() => reviewDevlog(dl, false)}>Unapprove</button>
+													<span class="buildlog-approved-tag">✓ {dl.approvedHours}h approved</span>
+													<button type="button" class="buildlog-unapprove" disabled={buildlogReviewLoading === dl.id}
+														onclick={() => reviewBuildlog(dl, false)}>Unapprove</button>
 												{:else}
-													<button type="button" class="devlog-approve" disabled={devlogReviewLoading === dl.id}
-														onclick={() => reviewDevlog(dl, true)}>
-														{devlogReviewLoading === dl.id ? 'Saving…' : 'Approve'}
+													<button type="button" class="buildlog-approve" disabled={buildlogReviewLoading === dl.id}
+														onclick={() => reviewBuildlog(dl, true)}>
+														{buildlogReviewLoading === dl.id ? 'Saving…' : 'Approve'}
 													</button>
 												{/if}
 											</div>
@@ -4085,14 +4078,14 @@
 	</aside>
 {/if}
 
-<svelte:window onkeydown={onDevlogLightboxKey} />
+<svelte:window onkeydown={onBuildlogLightboxKey} />
 
-{#if devlogLightbox}
+{#if buildlogLightbox}
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="devlog-lightbox" onclick={closeDevlogLightbox} role="dialog" aria-modal="true" aria-label="Devlog image">
-		<img src={devlogLightbox} alt="Devlog attachment full size" onclick={(e) => e.stopPropagation()} />
-		<button type="button" class="devlog-lightbox-close" onclick={closeDevlogLightbox} aria-label="Close">&times;</button>
+	<div class="buildlog-lightbox" onclick={closeBuildlogLightbox} role="dialog" aria-modal="true" aria-label="Buildlog image">
+		<img src={buildlogLightbox} alt="Buildlog attachment full size" onclick={(e) => e.stopPropagation()} />
+		<button type="button" class="buildlog-lightbox-close" onclick={closeBuildlogLightbox} aria-label="Close">&times;</button>
 	</div>
 {/if}
 
@@ -5914,14 +5907,14 @@
 		margin-top: 0.35rem;
 	}
 
-	.devlogs-list {
+	.buildlogs-list {
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
 		margin-bottom: 0.5rem;
 	}
 
-	.devlog-card {
+	.buildlog-card {
 		border: 1px solid #444;
 		border-left: 3px solid var(--color-accent);
 		border-radius: 6px;
@@ -5929,7 +5922,7 @@
 		background: #1e1e1e;
 	}
 
-	.devlog-card-header {
+	.buildlog-card-header {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
@@ -5937,17 +5930,17 @@
 		font-size: 0.75rem;
 	}
 
-	.devlog-card-author {
+	.buildlog-card-author {
 		color: #ccc;
 		font-weight: 600;
 	}
 
-	.devlog-card-date {
+	.buildlog-card-date {
 		color: #777;
 		margin-left: auto;
 	}
 
-	.devlog-review-bar {
+	.buildlog-review-bar {
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
@@ -5956,14 +5949,14 @@
 		padding-top: 0.6rem;
 		border-top: 1px dashed rgba(255, 255, 255, 0.12);
 	}
-	.devlog-hours-field {
+	.buildlog-hours-field {
 		display: flex;
 		align-items: center;
 		gap: 0.35rem;
 		font-size: 0.8rem;
 		color: #aaa;
 	}
-	.devlog-hours-input {
+	.buildlog-hours-input {
 		width: 5rem;
 		padding: 0.2rem 0.4rem;
 		border: 1px solid #555;
@@ -5972,7 +5965,7 @@
 		color: inherit;
 		font: inherit;
 	}
-	.devlog-hours-suggest {
+	.buildlog-hours-suggest {
 		border: 1px solid #4a6;
 		background: transparent;
 		color: #6c9;
@@ -5981,8 +5974,8 @@
 		font-size: 0.75rem;
 		cursor: pointer;
 	}
-	.devlog-approve,
-	.devlog-unapprove {
+	.buildlog-approve,
+	.buildlog-unapprove {
 		border-radius: 4px;
 		padding: 0.25rem 0.7rem;
 		font-size: 0.8rem;
@@ -5990,33 +5983,33 @@
 		cursor: pointer;
 		border: 1px solid;
 	}
-	.devlog-approve {
+	.buildlog-approve {
 		background: var(--color-success);
 		border-color: var(--color-success);
 		color: #fff;
 	}
-	.devlog-unapprove {
+	.buildlog-unapprove {
 		background: transparent;
 		border-color: #888;
 		color: #ccc;
 	}
-	.devlog-approve:disabled,
-	.devlog-unapprove:disabled {
+	.buildlog-approve:disabled,
+	.buildlog-unapprove:disabled {
 		opacity: 0.5;
 		cursor: default;
 	}
-	.devlog-approved-tag {
+	.buildlog-approved-tag {
 		font-size: 0.8rem;
 		font-weight: 700;
 		color: var(--color-success);
 	}
-	.devlog-approved-total {
+	.buildlog-approved-total {
 		font-size: 0.8rem;
 		font-weight: 600;
 		color: var(--color-success);
 	}
 
-	.devlog-card-title {
+	.buildlog-card-title {
 		margin: 0 0 4px;
 		font-size: 0.95rem;
 		color: var(--color-text);
@@ -6024,7 +6017,7 @@
 		line-height: 1.3;
 	}
 
-	.devlog-card-text {
+	.buildlog-card-text {
 		margin: 0;
 		font-size: 0.82rem;
 		color: #ddd;
@@ -6032,26 +6025,26 @@
 		line-height: 1.45;
 	}
 
-	.devlog-card-images {
+	.buildlog-card-images {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.4rem;
 		margin-top: 0.5rem;
 	}
 
-	.devlog-card-lookout {
+	.buildlog-card-lookout {
 		margin-top: 0.5rem;
 		font-size: 0.8rem;
 		color: #ddd;
 	}
-	.devlog-lookout-status {
+	.buildlog-lookout-status {
 		text-transform: capitalize;
 	}
-	.devlog-lookout-tracked,
-	.devlog-lookout-pending {
+	.buildlog-lookout-tracked,
+	.buildlog-lookout-pending {
 		opacity: 0.65;
 	}
-	.devlog-card-lookout video {
+	.buildlog-card-lookout video {
 		display: block;
 		width: 100%;
 		max-height: 360px;
@@ -6060,7 +6053,7 @@
 		border-radius: 4px;
 	}
 
-	.devlog-card-image-btn {
+	.buildlog-card-image-btn {
 		padding: 0;
 		border: 0;
 		background: transparent;
@@ -6068,7 +6061,7 @@
 		line-height: 0;
 	}
 
-	.devlog-card-images img {
+	.buildlog-card-images img {
 		width: 90px;
 		height: 90px;
 		object-fit: cover;
@@ -6078,11 +6071,11 @@
 		transition: transform 0.15s ease;
 	}
 
-	.devlog-card-image-btn:hover img {
+	.buildlog-card-image-btn:hover img {
 		transform: scale(1.04);
 	}
 
-	.devlog-lightbox {
+	.buildlog-lightbox {
 		position: fixed;
 		inset: 0;
 		z-index: 9999;
@@ -6095,7 +6088,7 @@
 		backdrop-filter: blur(4px);
 	}
 
-	.devlog-lightbox img {
+	.buildlog-lightbox img {
 		max-width: 100%;
 		max-height: 100%;
 		object-fit: contain;
@@ -6104,7 +6097,7 @@
 		cursor: default;
 	}
 
-	.devlog-lightbox-close {
+	.buildlog-lightbox-close {
 		position: absolute;
 		top: 18px;
 		right: 22px;
@@ -6121,7 +6114,7 @@
 		padding: 0;
 	}
 
-	.devlog-lightbox-close:hover {
+	.buildlog-lightbox-close:hover {
 		background: rgba(0, 0, 0, 0.85);
 	}
 

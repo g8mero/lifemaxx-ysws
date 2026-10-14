@@ -39,7 +39,6 @@
 		hackatimeProjectNames: string[];
 		aiUse: string | null;
 		isUpdate: boolean;
-		otherHcProgram: string | null;
 		overrideHours: number;
 		internalHours: number;
 		pipesGranted: number;
@@ -570,7 +569,6 @@
 							<dt>Hackatime</dt><dd>{current.owner?.hackatimeConnected ? 'linked' : 'not linked'}{#if current.hackatimeProjectNames.length} · {current.hackatimeProjectNames.join(', ')}{/if}</dd>
 							<dt>Approved hours (pending)</dt><dd>{current.overrideHours}h · {current.pipesGranted} pipes granted</dd>
 							{#if current.aiUse}<dt>AI use</dt><dd>{current.aiUse}</dd>{/if}
-							{#if current.otherHcProgram}<dt>Other HC program</dt><dd>{current.otherHcProgram}</dd>{/if}
 							{#if current.submission?.changeDescription}<dt>Change description</dt><dd>{current.submission.changeDescription}</dd>{/if}
 							<dt>Submitted</dt><dd>{fmtDate(current.submission?.createdAt ?? current.createdAt)} ({ago(current.createdAt)})</dd>
 						</dl>

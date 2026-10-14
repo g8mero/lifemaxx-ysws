@@ -102,9 +102,6 @@ export class Project {
   @Column({ type: 'boolean', name: 'is_update', default: false })
   isUpdate: boolean;
 
-  @Column({ type: 'varchar', name: 'other_hc_program', length: 255, nullable: true })
-  otherHcProgram: string | null;
-
   @Column({ type: 'varchar', name: 'ai_use', length: 200, nullable: true })
   aiUse: string | null;
 

@@ -71,9 +71,6 @@ export class User {
   @Column({ nullable: true, name: 'hackatime_user_id' })
   hackatimeUserId: string;
 
-  @Column({ nullable: true })
-  gender: string;
-
   // Answer to the one-time "here for the hackathon or the shop?" home prompt.
   // null = not answered yet → the modal keeps showing until they pick one.
   @Column({ type: 'varchar', length: 20, nullable: true })

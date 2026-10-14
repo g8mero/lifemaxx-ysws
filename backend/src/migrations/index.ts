@@ -25,30 +25,27 @@ import { CreateOrdersAndFulfillment1776000000000 } from './1776000000000-CreateO
 import { CreateSubmissions1776100000000 } from './1776100000000-CreateSubmissions';
 import { AddHcaTokens1776200000000 } from './1776200000000-AddHcaTokens';
 import { AddShopDetailedDescription1776300000000 } from './1776300000000-AddShopDetailedDescription';
-import { AddUserGender1776400000000 } from './1776400000000-AddUserGender';
 import { AddUserAttribution1777000000000 } from './1777000000000-AddUserAttribution';
 import { CreateHcbCredentialAndOrderGrant1777000000000 } from './1777000000000-CreateHcbCredentialAndOrderGrant';
-import { CreateShopSuggestions1777100000000 } from './1777100000000-CreateShopSuggestions';
 import { BackfillProjectOverrideHours1777200000000 } from './1777200000000-BackfillProjectOverrideHours';
-import { CreateDevlogs1777300000000 } from './1777300000000-CreateDevlogs';
+import { CreateBuildlogs1777300000000 } from './1777300000000-CreateBuildlogs';
 import { CreateEvents1777300000000 } from './1777300000000-CreateEvents';
-import { AddDevlogTitle1777300000100 } from './1777300000100-AddDevlogTitle';
+import { AddBuildlogTitle1777300000100 } from './1777300000100-AddBuildlogTitle';
 import { RemoveEventLocation1777400000000 } from './1777400000000-RemoveEventLocation';
 import { CreateFraudReviews1778000000000 } from './1778000000000-CreateFraudReviews';
 import { AddShopItemFeatured1778100000000 } from './1778100000000-AddShopItemFeatured';
 import { AddSubmissionReviewerNote1778200000000 } from './1778200000000-AddSubmissionReviewerNote';
 import { AddUserIntent1778300000000 } from './1778300000000-AddUserIntent';
 import { AddProjectFlagsColumns1779000000000 } from './1779000000000-AddProjectFlagsColumns';
-import { AddProjectOtherHcProgram1779100000000 } from './1779100000000-AddProjectOtherHcProgram';
 import { AddEventHostedBy1779200000000 } from './1779200000000-AddEventHostedBy';
 import { AddReviewerUserNote1779300000000 } from './1779300000000-AddReviewerUserNote';
 import { AddProjectReviewHideReviewerName1779400000000 } from './1779400000000-AddProjectReviewHideReviewerName';
 import { AddProjectClaimColumns1779500000000 } from './1779500000000-AddProjectClaimColumns';
 import { AddUserReviewerMarkers1779500000000 } from './1779500000000-AddUserWatchlisted';
 import { AddLookoutSessions1779600000000 } from './1779600000000-AddLookoutSessions';
-import { AddDevlogToLookoutSessions1779700000000 } from './1779700000000-AddDevlogToLookoutSessions';
+import { AddBuildlogToLookoutSessions1779700000000 } from './1779700000000-AddBuildlogToLookoutSessions';
 import { AddOrderFulfillmentNote1782600000000 } from './1782600000000-AddOrderFulfillmentNote';
-import { AddDevlogReview1782700000000 } from './1782700000000-AddDevlogReview';
+import { AddBuildlogReview1782700000000 } from './1782700000000-AddBuildlogReview';
 import { AddSidekickIntegration1782800000000 } from './1782800000000-AddSidekickIntegration';
 import { AddReviewReturnTracking1782900000000 } from './1782900000000-AddReviewReturnTracking';
 import { AddProjectIsGolden1783000000000 } from './1783000000000-AddProjectIsGolden';
@@ -84,30 +81,27 @@ export const ALL_MIGRATIONS = [
   CreateSubmissions1776100000000,
   AddHcaTokens1776200000000,
   AddShopDetailedDescription1776300000000,
-  AddUserGender1776400000000,
   AddUserAttribution1777000000000,
   CreateHcbCredentialAndOrderGrant1777000000000,
-  CreateShopSuggestions1777100000000,
   BackfillProjectOverrideHours1777200000000,
-  CreateDevlogs1777300000000,
+  CreateBuildlogs1777300000000,
   CreateEvents1777300000000,
-  AddDevlogTitle1777300000100,
+  AddBuildlogTitle1777300000100,
   RemoveEventLocation1777400000000,
   CreateFraudReviews1778000000000,
   AddShopItemFeatured1778100000000,
   AddSubmissionReviewerNote1778200000000,
   AddUserIntent1778300000000,
   AddProjectFlagsColumns1779000000000,
-  AddProjectOtherHcProgram1779100000000,
   AddEventHostedBy1779200000000,
   AddReviewerUserNote1779300000000,
   AddProjectReviewHideReviewerName1779400000000,
   AddProjectClaimColumns1779500000000,
   AddUserReviewerMarkers1779500000000,
   AddLookoutSessions1779600000000,
-  AddDevlogToLookoutSessions1779700000000,
+  AddBuildlogToLookoutSessions1779700000000,
   AddOrderFulfillmentNote1782600000000,
-  AddDevlogReview1782700000000,
+  AddBuildlogReview1782700000000,
   AddSidekickIntegration1782800000000,
   AddReviewReturnTracking1782900000000,
   AddProjectIsGolden1783000000000,

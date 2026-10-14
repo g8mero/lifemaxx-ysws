@@ -25,7 +25,7 @@ import { AuditService, type AuditAction } from './audit.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthService } from '../auth/auth.service';
 import { ShopService } from '../shop/shop.service';
-import { DevlogsService } from '../devlogs/devlogs.service';
+import { BuildlogsService } from '../buildlogs/buildlogs.service';
 import { LookoutService } from '../lookout/lookout.service';
 import { AttendService } from '../attend/attend.service';
 import { SettingsService } from '../settings/settings.service';
@@ -77,7 +77,7 @@ export class AdminController {
     private readonly auditLogService: AuditLogService,
     private readonly authService: AuthService,
     private readonly shopService: ShopService,
-    private readonly devlogsService: DevlogsService,
+    private readonly buildlogsService: BuildlogsService,
     private readonly lookoutService: LookoutService,
     private readonly attendService: AttendService,
     private readonly settingsService: SettingsService,
@@ -496,23 +496,23 @@ export class AdminController {
     return this.adminService.getProjectReviews(id, true);
   }
 
-  /** Devlog entries authored by the project owner and linked to this project. */
+  /** Buildlog entries authored by the project owner and linked to this project. */
   @UseGuards(ReviewerGuard)
-  @Get('projects/:id/devlogs')
-  getProjectDevlogs(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
+  @Get('projects/:id/buildlogs')
+  getProjectBuildlogs(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
     const isSuperAdmin = (req as any).user?.perms === 'Super Admin';
-    return this.devlogsService.findByProject(id, isSuperAdmin);
+    return this.buildlogsService.findByProject(id, isSuperAdmin);
   }
 
   @UseGuards(ReviewerGuard)
-  @Patch('devlogs/:id/review')
-  reviewDevlog(
+  @Patch('buildlogs/:id/review')
+  reviewBuildlog(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { approved?: boolean; approvedHours?: number | null },
     @Req() req: Request,
   ) {
     const reviewerId = (req as any).user?.uid;
-    return this.devlogsService.reviewDevlog(id, reviewerId, {
+    return this.buildlogsService.reviewBuildlog(id, reviewerId, {
       approved: body.approved === true,
       approvedHours: typeof body.approvedHours === 'number' ? body.approvedHours : null,
     });

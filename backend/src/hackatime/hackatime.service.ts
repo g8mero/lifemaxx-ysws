@@ -210,7 +210,7 @@ export class HackatimeService implements OnModuleInit {
       this.rsvpService.updateDateField(user.email, this.yswsConfig.loopsField('HackatimeSynched'));
     }
 
-    return { success: true, redirectTo: '/tutorial?stage=2' };
+    return { success: true, redirectTo: '/dashboard' };
   }
 
   async isConnected(userId: string): Promise<boolean> {
@@ -219,6 +219,23 @@ export class HackatimeService implements OnModuleInit {
       select: ['hackatimeToken'],
     });
     return !!user?.hackatimeToken;
+  }
+
+  /**
+   * Whether the user has linked Hackatime, plus the linked account's ID.
+   * The ID can be null while connected: it's captured best-effort at connect time.
+   */
+  async getConnection(
+    userId: string,
+  ): Promise<{ connected: boolean; hackatimeUserId: string | null }> {
+    const user = await this.userRepo.findOne({
+      where: { hcaSub: userId },
+      select: ['hackatimeToken', 'hackatimeUserId'],
+    });
+    return {
+      connected: !!user?.hackatimeToken,
+      hackatimeUserId: user?.hackatimeUserId ?? null,
+    };
   }
 
   /**

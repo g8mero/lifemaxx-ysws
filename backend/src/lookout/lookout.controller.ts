@@ -49,7 +49,7 @@ export class LookoutController {
 
         const row = await this.lookout.saveSession(userId, id, created);
 
-        // `id` lets the devlog form attach this session on submit; `token` lets
+        // `id` lets the buildlog form attach this session on submit; `token` lets
         // the client deep-link into the Lookout desktop app (lookout://session?token=…).
         return { id: row.id, token: created.token, sessionUrl: created.sessionUrl };
     }

@@ -15,7 +15,7 @@ import { BotServiceKeyGuard } from '../admin/bot-service-key.guard';
 import { Project } from '../entities/project.entity';
 import { ProjectReview } from '../entities/project-review.entity';
 import { BotReviewDraft } from '../entities/bot-review-draft.entity';
-import { DevlogsService } from '../devlogs/devlogs.service';
+import { BuildlogsService } from '../buildlogs/buildlogs.service';
 import { LookoutService } from '../lookout/lookout.service';
 
 const VALID_VERDICTS = ['approved_full', 'approved_deflated', 'needs_changes', 'rejected'] as const;
@@ -51,13 +51,13 @@ export class BotReviewInternalController {
     @InjectRepository(Project) private readonly projectRepo: Repository<Project>,
     @InjectRepository(ProjectReview) private readonly reviewRepo: Repository<ProjectReview>,
     @InjectRepository(BotReviewDraft) private readonly draftRepo: Repository<BotReviewDraft>,
-    private readonly devlogsService: DevlogsService,
+    private readonly buildlogsService: BuildlogsService,
     private readonly lookoutService: LookoutService,
   ) {}
 
   /**
    * Full context for a project the bot has been dispatched (see
-   * BotReviewPollerService) — devlogs, Lookout evidence, and prior human
+   * BotReviewPollerService) — buildlogs, Lookout evidence, and prior human
    * review history, so the bot's rubric doesn't have to guess review state
    * from the dispatch payload alone.
    */
@@ -67,8 +67,8 @@ export class BotReviewInternalController {
     const project = await this.projectRepo.findOne({ where: { id: projectId } });
     if (!project) throw new NotFoundException('project not found');
 
-    const [devlogs, lookout, priorReviews] = await Promise.all([
-      this.devlogsService.findByProject(projectId, true),
+    const [buildlogs, lookout, priorReviews] = await Promise.all([
+      this.buildlogsService.findByProject(projectId, true),
       this.lookoutService.listForProjectReview(projectId),
       this.reviewRepo.find({ where: { projectId }, order: { createdAt: 'DESC' } }),
     ]);
@@ -86,10 +86,9 @@ export class BotReviewInternalController {
         screenshot2Url: project.screenshot2Url,
         hackatimeProjectName: project.hackatimeProjectName ?? [],
         aiUse: project.aiUse,
-        otherHcProgram: project.otherHcProgram,
         isUpdate: project.isUpdate,
       },
-      devlogs,
+      buildlogs,
       lookout,
       totalLapseSeconds: lookout.totalTrackedSeconds,
       priorReviews: priorReviews.map((r) => ({

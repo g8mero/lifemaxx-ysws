@@ -17,7 +17,7 @@ import { Comment } from '../entities/comment.entity';
 import { BotReviewDraft } from '../entities/bot-review-draft.entity';
 import { ShopModule } from '../shop/shop.module';
 import { HcaModule } from '../hca/hca.module';
-import { DevlogsModule } from '../devlogs/devlogs.module';
+import { BuildlogsModule } from '../buildlogs/buildlogs.module';
 import { LookoutModule } from '../lookout/lookout.module';
 import { FraudReviewModule } from '../fraud-review/fraud-review.module';
 import { ProjectAirtableSyncModule } from '../projects/project-airtable-sync.module';
@@ -44,7 +44,7 @@ import { AuditServiceKeyGuard } from './audit-service-key.guard';
     AuditLogModule,
     ShopModule,
     HcaModule,
-    DevlogsModule,
+    BuildlogsModule,
     LookoutModule,
     FraudReviewModule,
     ProjectAirtableSyncModule,

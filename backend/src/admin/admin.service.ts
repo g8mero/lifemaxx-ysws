@@ -1021,7 +1021,6 @@ export class AdminService implements OnApplicationBootstrap {
           hackatimeProjectName: p.hackatimeProjectName,
           isUpdate: p.isUpdate,
           isGolden: p.isGolden,
-          otherHcProgram: p.otherHcProgram,
           aiUse: p.aiUse,
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,

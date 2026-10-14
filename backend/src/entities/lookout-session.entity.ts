@@ -7,7 +7,7 @@ import {
     JoinColumn
 }   from 'typeorm';
 import { Project } from './project.entity';
-import { Devlog } from './devlog.entity';
+import { Buildlog } from './buildlog.entity';
 
 @Entity('lookout_sessions')
 export class LookoutSession {
@@ -31,12 +31,12 @@ export class LookoutSession {
     @Column({ type: 'varchar' })
     token: string;
 
-    @Column({ name: 'devlog_id', type: 'uuid', nullable: true })
-    devlogId: string | null;
+    @Column({ name: 'buildlog_id', type: 'uuid', nullable: true })
+    buildlogId: string | null;
 
-    @ManyToOne(() => Devlog, { onDelete: 'SET NULL', nullable: true })
-    @JoinColumn({ name: 'devlog_id' })
-    devlog: Devlog | null;
+    @ManyToOne(() => Buildlog, { onDelete: 'SET NULL', nullable: true })
+    @JoinColumn({ name: 'buildlog_id' })
+    buildlog: Buildlog | null;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

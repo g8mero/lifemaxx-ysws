@@ -8,6 +8,5 @@ export class CreateProjectDto {
   screenshots?: string[];
   hackatimeProjectName?: string[];
   isUpdate?: boolean;
-  otherHcProgram?: string;
   aiUse?: string;
 }

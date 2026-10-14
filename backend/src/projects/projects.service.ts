@@ -108,7 +108,6 @@ export class ProjectsService {
     }
 
     const isUpdate = dto.isUpdate === true;
-    const otherHcProgram = this.validateOptionalString(dto.otherHcProgram, 'otherHcProgram', 255);
     const aiUse = this.validateOptionalString(dto.aiUse, 'aiUse', 200);
 
     const project = this.projectRepo.create({
@@ -123,7 +122,6 @@ export class ProjectsService {
       screenshot2Url: screenshotUrls[1],
       hackatimeProjectName,
       isUpdate,
-      otherHcProgram,
       aiUse,
     });
 
@@ -233,7 +231,6 @@ export class ProjectsService {
         'status',
         'isUpdate',
         'isGolden',
-        'otherHcProgram',
         'aiUse',
         'overrideHours',
         'pipesGranted',
@@ -516,9 +513,6 @@ export class ProjectsService {
     }
     if (dto.isUpdate !== undefined) {
       project.isUpdate = dto.isUpdate === true;
-    }
-    if (dto.otherHcProgram !== undefined) {
-      project.otherHcProgram = dto.otherHcProgram === null ? null : this.validateOptionalString(dto.otherHcProgram, 'otherHcProgram', 255);
     }
     if (dto.aiUse !== undefined) {
       project.aiUse = dto.aiUse === null ? null : this.validateOptionalString(dto.aiUse, 'aiUse', 200);

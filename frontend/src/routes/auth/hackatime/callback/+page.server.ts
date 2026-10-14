@@ -56,7 +56,7 @@ export const load: PageServerLoad = async ({ url, cookies }) => {
 
 	// Defense-in-depth: only follow relative redirects from the backend
 	if (typeof redirectTo !== 'string' || !redirectTo.startsWith('/') || redirectTo.startsWith('//')) {
-		redirect(302, '/tutorial');
+		redirect(302, '/dashboard');
 	}
 
 	redirect(302, redirectTo);

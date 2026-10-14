@@ -1,7 +1,7 @@
 import { Controller, Get, Param, ParseUUIDPipe, UseGuards, NotFoundException } from '@nestjs/common';
 import { AuditServiceKeyGuard } from './audit-service-key.guard';
 import { IframeContextService } from './iframe-context.service';
-import { DevlogsService } from '../devlogs/devlogs.service';
+import { BuildlogsService } from '../buildlogs/buildlogs.service';
 import { LookoutService } from '../lookout/lookout.service';
 /**
  * Internal, shared-key-gated route the private audit service calls to exchange
@@ -13,7 +13,7 @@ import { LookoutService } from '../lookout/lookout.service';
 export class AuditInternalController {
   constructor(
     private readonly contexts: IframeContextService,
-    private readonly devlogsService: DevlogsService,   // ← add
+    private readonly buildlogsService: BuildlogsService,   // ← add
     private readonly lookoutService: LookoutService,   // ← add
   ) {}
 
@@ -29,23 +29,23 @@ export class AuditInternalController {
   }
 
   /**
-   * Devlogs + Lookout evidence for a project, for the second-pass audit service.
+   * Buildlogs + Lookout evidence for a project, for the second-pass audit service.
    * Same shared-key gate as context resolution. `projectId` comes from the ctx
    * payload the audit service already resolved, so no new identifier is exposed.
    */
   @UseGuards(AuditServiceKeyGuard)
-  @Get('project/:projectId/devlogs')
-  async getProjectDevlogs(@Param('projectId', ParseUUIDPipe) projectId: string) {
-    const [devlogs, lookout, approvedDevlogHours] = await Promise.all([
+  @Get('project/:projectId/buildlogs')
+  async getProjectBuildlogs(@Param('projectId', ParseUUIDPipe) projectId: string) {
+    const [buildlogs, lookout, approvedBuildlogHours] = await Promise.all([
       // isSuperAdmin=true: the audit pass is super-admin-only, so full names are fine.
-      this.devlogsService.findByProject(projectId, true),
+      this.buildlogsService.findByProject(projectId, true),
       this.lookoutService.listForProjectReview(projectId),
-      this.devlogsService.approvedHoursForProject(projectId),
+      this.buildlogsService.approvedHoursForProject(projectId),
     ]);
     return {
-      devlogs,
+      buildlogs,
       lookout,
-      approvedDevlogHours,
+      approvedBuildlogHours,
       totalLapseSeconds: lookout.totalTrackedSeconds,
     };
   }

@@ -8,14 +8,14 @@
  var(--color-text) - Beige
  var(--color-accent) - Light Steel Blue
  var(--color-text) - Light Cyan
- #9a9285 - Warm Granite (devlogs accent)
- #52504a - Basalt       (devlogs section bg)
+ #9a9285 - Warm Granite (buildlogs accent)
+ #52504a - Basalt       (buildlogs section bg)
  #ffffff - White
 -->
 
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { goto, pushState } from '$app/navigation';
+  import { pushState } from '$app/navigation';
   import { page } from '$app/state';
   import confetti from 'canvas-confetti';
   import { formatLocal } from '$lib/utils/formatDate';
@@ -34,7 +34,6 @@
   }
 
   let { data } = $props();
-  const initialEvents = data.events ?? [];
   const MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024;
 
   function slackUserUrl(slackId: string) {
@@ -42,28 +41,21 @@
   }
 
   const sectionRoutes: Record<string, string> = {
-    projects: '/projects',
+    dashboard: '/dashboard',
     shop: '/shop',
-    events: '/events',
     explore: '/explore',
-    leaderboard: '/leaderboard',
-    faq: '/faq',
     me: '/me',
-    devlogs: '/devlogs',
-    tutorial: '/tutorial'
+    buildlogs: '/buildlogs',
   };
   const pathSections: Record<string, string> = {
-    '/home': 'projects',
-    '/projects': 'projects',
+    '/home': 'dashboard',
+    '/dashboard': 'dashboard',
     '/shop': 'shop',
-    '/events': 'events',
     '/explore': 'explore',
-    '/leaderboard': 'leaderboard',
-    '/faq': 'faq',
     '/me': 'me',
-    '/devlogs': 'devlogs'
+    '/buildlogs': 'buildlogs'
   };
-  const sectionFromPath = (pathname: string) => pathSections[pathname] ?? 'projects';
+  const sectionFromPath = (pathname: string) => pathSections[pathname] ?? 'dashboard';
 
   let activeSection = $state(sectionFromPath(page.url.pathname));
   let customCursorEnabled = $state(typeof localStorage !== 'undefined' ? localStorage.getItem('customCursor') !== 'off' : true);
@@ -110,25 +102,19 @@
   let activeScreenshot = $state(0);
   let hackatimeProject = $state<string[]>([]);
   let isUpdateProject = $state(false);
-  let otherHcProgram = $state(false);
-  let otherHcProgramName = $state('');
   let usedAi = $state(false);
   let aiUseDescription = $state('');
   let projects = $state<any[]>([]);
   let catImages = $state<Record<string, string>>({});
   let hackatimeProjects = $state<string[]>([]);
   let hackatimeLoading = $state(false);
+  // null until the first fetch answers, so the Me page doesn't flash a Connect button at connected users.
+  let hackatimeConnected = $state<boolean | null>(null);
+  let hackatimeUserId = $state<string | null>(null);
   let hackatimeOpen = $state(false);
   let submitting = $state(false);
   let formError = $state('');
   let auditLog = $state<{ action: string; label: string; createdAt: string }[]>([]);
-  let newsItems = $state<{ id: string; text: string; displayDate: string }[]>([]);
-  let eventItems = $state<{ id: string; title: string; description: string | null; hostedBy: string | null; hostedByName: string | null; hostedBySlackId: string | null; startAt: string; endAt: string | null; location: string | null; url: string | null }[]>(initialEvents);
-  let leaderboard = $state<{ name: string; hours: number }[]>([]);
-  let leaderboardLoading = $state(true);
-  let leaderboardTotal = $state(0);
-  let leaderboardLoadingMore = $state(false);
-  const LEADERBOARD_PAGE_SIZE = 10;
   let exploreProjects = $state<{ id: string; name: string; description: string; projectType: string; screenshot1Url: string | null; screenshot2Url: string | null; codeUrl: string | null; demoUrl: string | null; hours: number; builderName: string }[]>([]);
   let exploreLoading = $state(true);
 
@@ -188,14 +174,14 @@
   let fulfillmentLoading = $state(false);
   let unreadCount = $state(0);
 
-  // Devlogs state
-  type LookoutDevlog = {
+  // Buildlogs state
+  type LookoutBuildlog = {
     status: string;
     trackedSeconds: number | null;
     videoUrl: string | null;
     thumbnailUrl: string | null;
   } | null;
-  type DevlogType = { id: string; projectId: string | null; title: string; text: string; imageUrls: string[]; lookout: LookoutDevlog; createdAt: string };
+  type BuildlogType = { id: string; projectId: string | null; title: string; text: string; imageUrls: string[]; lookout: LookoutBuildlog; createdAt: string };
   type LookoutSessionOption = {
     id: string;
     name: string | null;
@@ -206,64 +192,64 @@
     thumbnailUrl: string | null;
     createdAt: string | null;
   };
-  let devlogs = $state<DevlogType[]>([]);
-  let devlogsLoading = $state(false);
-  let devlogFormOpen = $state(false);
-  let devlogLightbox = $state<string | null>(null);
+  let buildlogs = $state<BuildlogType[]>([]);
+  let buildlogsLoading = $state(false);
+  let buildlogFormOpen = $state(false);
+  let buildlogLightbox = $state<string | null>(null);
   // Whether the "select a timelapse" popup is open.
   let lookoutPickerOpen = $state(false);
 
-  // Show the create form upfront when there are no devlogs yet; otherwise
-  // keep it tucked behind a "New devlog" button until the user opens it.
-  let devlogFormVisible = $derived(devlogs.length === 0 || devlogFormOpen);
+  // Show the create form upfront when there are no buildlogs yet; otherwise
+  // keep it tucked behind a "New buildlog" button until the user opens it.
+  let buildlogFormVisible = $derived(buildlogs.length === 0 || buildlogFormOpen);
 
-  function openDevlogLightbox(url: string) {
-    devlogLightbox = url;
+  function openBuildlogLightbox(url: string) {
+    buildlogLightbox = url;
   }
-  function closeDevlogLightbox() {
-    devlogLightbox = null;
+  function closeBuildlogLightbox() {
+    buildlogLightbox = null;
   }
-  function onDevlogLightboxKey(e: KeyboardEvent) {
+  function onBuildlogLightboxKey(e: KeyboardEvent) {
     if (e.key !== 'Escape') return;
     if (lookoutPickerOpen) { lookoutPickerOpen = false; return; }
-    closeDevlogLightbox();
+    closeBuildlogLightbox();
   }
 
   // Label for the "select a timelapse" button reflecting the current choice.
   function selectedLookoutLabel(): string {
-    if (!devlogLookoutSessionId) return '🎞️ Select a timelapse';
-    const s = devlogLookoutSessions.find((x) => x.id === devlogLookoutSessionId);
+    if (!buildlogLookoutSessionId) return '🎞️ Select a timelapse';
+    const s = buildlogLookoutSessions.find((x) => x.id === buildlogLookoutSessionId);
     if (!s) return '🎞️ Select a timelapse';
     if (s.name) return `${s.name}`;
     const time = s.trackedSeconds ? `${fmtTrackedShort(s.trackedSeconds)} · ` : '';
     return `🎞️ ${time}${s.createdAt ? formatLocal(s.createdAt) : 'recent'}`;
   }
-  let devlogTitle = $state('');
-  let devlogText = $state('');
-  let devlogProjectId = $state<string>('');
-  let devlogFiles = $state<(File | null)[]>([null, null, null, null]);
-  let devlogPreviews = $state<string[]>(['', '', '', '']);
-  let devlogSubmitting = $state(false);
-  let devlogError = $state('');
-  // Lookout timelapse the user records (optionally) before posting a devlog.
-  let devlogLookoutSessionId = $state<string | null>(null);
-  let devlogLookoutSessions = $state<LookoutSessionOption[]>([]);
-  let devlogLookoutSessionsLoading = $state(false);
-  let devlogLookoutBusy = $state(false);
-  // Survives the redirect to the Lookout recorder so the half-written devlog
+  let buildlogTitle = $state('');
+  let buildlogText = $state('');
+  let buildlogProjectId = $state<string>('');
+  let buildlogFiles = $state<(File | null)[]>([null, null, null, null]);
+  let buildlogPreviews = $state<string[]>(['', '', '', '']);
+  let buildlogSubmitting = $state(false);
+  let buildlogError = $state('');
+  // Lookout timelapse the user records (optionally) before posting a buildlog.
+  let buildlogLookoutSessionId = $state<string | null>(null);
+  let buildlogLookoutSessions = $state<LookoutSessionOption[]>([]);
+  let buildlogLookoutSessionsLoading = $state(false);
+  let buildlogLookoutBusy = $state(false);
+  // Survives the redirect to the Lookout recorder so the half-written buildlog
   // (and its attached recording) is restored when the user comes back.
-  const DEVLOG_DRAFT_KEY = 'ysws:devlog-lookout-draft';
-  const DEVLOG_AUTOSAVE_KEY = 'ysws:devlog-autosave';
+  const BUILDLOG_DRAFT_KEY = 'ysws:buildlog-lookout-draft';
+  const BUILDLOG_AUTOSAVE_KEY = 'ysws:buildlog-autosave';
 
-  function selectDefaultDevlogLookoutSession(sessions: LookoutSessionOption[]) {
-    const selectable = getSelectableDevlogLookoutSessions(sessions);
+  function selectDefaultBuildlogLookoutSession(sessions: LookoutSessionOption[]) {
+    const selectable = getSelectableBuildlogLookoutSessions(sessions);
     const completeSession = selectable.find((session) => session.status === 'complete');
     return completeSession?.id ?? selectable[0]?.id ?? null;
   }
 
-  function sortDevlogLookoutSessions(sessions: LookoutSessionOption[]) {
+  function sortBuildlogLookoutSessions(sessions: LookoutSessionOption[]) {
     // Newest to oldest. (Default selection still prefers a complete session via
-    // selectDefaultDevlogLookoutSession, independent of this ordering.)
+    // selectDefaultBuildlogLookoutSession, independent of this ordering.)
     // A missing createdAt means a just-created session, so treat it as newest.
     return [...sessions].sort((a, b) => {
       const aTime = a.createdAt ? Date.parse(a.createdAt) : Infinity;
@@ -275,26 +261,26 @@
   $effect(() =>{
     if (typeof localStorage === 'undefined') return;
     const hasContent =
-      devlogTitle.trim() || devlogText.trim() || devlogProjectId || devlogLookoutSessionId;
+      buildlogTitle.trim() || buildlogText.trim() || buildlogProjectId || buildlogLookoutSessionId;
     if (!hasContent) {
-      localStorage.removeItem(DEVLOG_AUTOSAVE_KEY);
+      localStorage.removeItem(BUILDLOG_AUTOSAVE_KEY);
       return;
     }
     localStorage.setItem(
-      DEVLOG_AUTOSAVE_KEY,
+      BUILDLOG_AUTOSAVE_KEY,
       JSON.stringify({
-        title: devlogTitle,
-        text: devlogText,
-        projectId: devlogProjectId,
-        lookoutSessionId: devlogLookoutSessionId,
+        title: buildlogTitle,
+        text: buildlogText,
+        projectId: buildlogProjectId,
+        lookoutSessionId: buildlogLookoutSessionId,
       }),
     );
   });
 
   const LOOKOUT_INPROGRESS_WINDOW_MS = 30 * 60 * 1000;
-  function getSelectableDevlogLookoutSessions(sessions: LookoutSessionOption[]) {
+  function getSelectableBuildlogLookoutSessions(sessions: LookoutSessionOption[]) {
     const now = Date.now();
-    return sortDevlogLookoutSessions(sessions).filter((session) => {
+    return sortBuildlogLookoutSessions(sessions).filter((session) => {
       if (session.status === 'failed') return false;
       if (session.status === 'complete') return true;
       const created = session.createdAt ? Date.parse(session.createdAt) : now;
@@ -302,74 +288,74 @@
     });
   }
 
-  async function fetchDevlogLookoutSessions(projectId: string) {
+  async function fetchBuildlogLookoutSessions(projectId: string) {
     if (!projectId) {
-      devlogLookoutSessions = [];
-      devlogLookoutSessionId = null;
-      devlogLookoutSessionsLoading = false;
+      buildlogLookoutSessions = [];
+      buildlogLookoutSessionId = null;
+      buildlogLookoutSessionsLoading = false;
       return;
     }
 
-    devlogLookoutSessionsLoading = true;
+    buildlogLookoutSessionsLoading = true;
     try {
       const res = await fetch(`/api/projects/${projectId}/lookout`);
       if (!res.ok) {
-        devlogLookoutSessions = [];
-        devlogLookoutSessionId = null;
+        buildlogLookoutSessions = [];
+        buildlogLookoutSessionId = null;
         return;
       }
 
       const data = await res.json().catch(() => null);
       const sessions = Array.isArray(data?.sessions) ? data.sessions : [];
-      devlogLookoutSessions = sessions;
+      buildlogLookoutSessions = sessions;
 
-      if (!sessions.some((session: LookoutSessionOption) => session.id === devlogLookoutSessionId && session.status !== 'failed')) {
-        devlogLookoutSessionId = selectDefaultDevlogLookoutSession(sessions);
+      if (!sessions.some((session: LookoutSessionOption) => session.id === buildlogLookoutSessionId && session.status !== 'failed')) {
+        buildlogLookoutSessionId = selectDefaultBuildlogLookoutSession(sessions);
       }
     } catch {
-      devlogLookoutSessions = [];
-      devlogLookoutSessionId = null;
+      buildlogLookoutSessions = [];
+      buildlogLookoutSessionId = null;
     } finally {
-      devlogLookoutSessionsLoading = false;
+      buildlogLookoutSessionsLoading = false;
     }
   }
 
   $effect(() => {
-    const projectId = devlogProjectId.trim();
-    void fetchDevlogLookoutSessions(projectId);
+    const projectId = buildlogProjectId.trim();
+    void fetchBuildlogLookoutSessions(projectId);
   });
 
-  async function startDevlogRecording() {
-    if (!devlogProjectId) {
-      devlogError = 'Pick a project before recording a timelapse';
+  async function startBuildlogRecording() {
+    if (!buildlogProjectId) {
+      buildlogError = 'Pick a project before recording a timelapse';
       return;
     }
-    devlogLookoutBusy = true;
+    buildlogLookoutBusy = true;
     try {
-      const res = await fetch(`/api/projects/${devlogProjectId}/lookout/session`, {
+      const res = await fetch(`/api/projects/${buildlogProjectId}/lookout/session`, {
         method: 'POST'
       });
       if (!res.ok) {
-        devlogError = 'Could not start a timelapse recording right now.';
+        buildlogError = 'Could not start a timelapse recording right now.';
         return;
       }
       const { id, token } = await res.json();
-      devlogLookoutSessionId = id;
-      if (!devlogLookoutSessions.some((session) => session.id === id)) {
-        devlogLookoutSessions = [
-          ...devlogLookoutSessions,
+      buildlogLookoutSessionId = id;
+      if (!buildlogLookoutSessions.some((session) => session.id === id)) {
+        buildlogLookoutSessions = [
+          ...buildlogLookoutSessions,
           { id, name: null, status: 'pending', trackedSeconds: null, screenshotCount: null, videoUrl: null, thumbnailUrl: null, createdAt: null },
         ];
       }
-      // Stash the in-progress devlog so it (and this recording) survive the
+      // Stash the in-progress buildlog so it (and this recording) survive the
       // round-trip in case the browser navigates away to hand off the link.
       try {
         sessionStorage.setItem(
-          DEVLOG_DRAFT_KEY,
+          BUILDLOG_DRAFT_KEY,
           JSON.stringify({
-            title: devlogTitle,
-            text: devlogText,
-            projectId: devlogProjectId,
+            title: buildlogTitle,
+            text: buildlogText,
+            projectId: buildlogProjectId,
             lookoutSessionId: id
           })
         );
@@ -377,28 +363,28 @@
       // Deep-link into the Lookout desktop app (matches fallout's desktop mode).
       window.location.href = `lookout://session?token=${token}`;
     } catch {
-      devlogError = 'Could not start a timelapse recording right now.';
+      buildlogError = 'Could not start a timelapse recording right now.';
     } finally {
-      devlogLookoutBusy = false;
+      buildlogLookoutBusy = false;
     }
   }
 
-  function restoreDevlogDraft() {
+  function restoreBuildlogDraft() {
     let raw: string | null = null;
     try {
-      raw = sessionStorage.getItem(DEVLOG_DRAFT_KEY);
-      sessionStorage.removeItem(DEVLOG_DRAFT_KEY);
+      raw = sessionStorage.getItem(BUILDLOG_DRAFT_KEY);
+      sessionStorage.removeItem(BUILDLOG_DRAFT_KEY);
     } catch { return; }
     if (!raw) return;
     try {
       const draft = JSON.parse(raw);
-      devlogTitle = draft.title ?? '';
-      devlogText = draft.text ?? '';
-      devlogProjectId = draft.projectId ?? '';
-      devlogLookoutSessionId = draft.lookoutSessionId ?? null;
-      devlogFormOpen = true;
-      activeSection = 'devlogs';
-      fetchDevlogs();
+      buildlogTitle = draft.title ?? '';
+      buildlogText = draft.text ?? '';
+      buildlogProjectId = draft.projectId ?? '';
+      buildlogLookoutSessionId = draft.lookoutSessionId ?? null;
+      buildlogFormOpen = true;
+      activeSection = 'buildlogs';
+      fetchBuildlogs();
       return true;
     } catch { /* malformed draft — ignore */ }
     return false;
@@ -406,36 +392,26 @@
 
   // Restore a locally autosaved draft (survives reload / window close). The
   // Lookout sessionStorage draft above takes precedence when both exist.
-  function restoreDevlogAutosave() {
+  function restoreBuildlogAutosave() {
     let raw: string | null = null;
     try {
-      raw = localStorage.getItem(DEVLOG_AUTOSAVE_KEY);
+      raw = localStorage.getItem(BUILDLOG_AUTOSAVE_KEY);
     } catch { return; }
     if (!raw) return;
     try {
       const draft = JSON.parse(raw);
-      devlogTitle = draft.title ?? '';
-      devlogText = draft.text ?? '';
-      devlogProjectId = draft.projectId ?? '';
-      devlogLookoutSessionId = draft.lookoutSessionId ?? null;
-      if (devlogTitle || devlogText || devlogProjectId) devlogFormOpen = true;
+      buildlogTitle = draft.title ?? '';
+      buildlogText = draft.text ?? '';
+      buildlogProjectId = draft.projectId ?? '';
+      buildlogLookoutSessionId = draft.lookoutSessionId ?? null;
+      if (buildlogTitle || buildlogText || buildlogProjectId) buildlogFormOpen = true;
     } catch { /* malformed draft — ignore */ }
   }
-  const DEVLOG_TITLE_MAX = 120;
-  const DEVLOG_TEXT_MAX = 5000;
-  const DEVLOG_MAX_IMAGES = 4;
+  const BUILDLOG_TITLE_MAX = 120;
+  const BUILDLOG_TEXT_MAX = 5000;
+  const BUILDLOG_MAX_IMAGES = 4;
   let nicknameInput = $state(data.user.nickname ?? '');
   let nicknameSaving = $state(false);
-  let genderSaving = $state(false);
-
-  const GENDER_OPTIONS: { value: string; label: string }[] = [
-    { value: 'male', label: 'Male' },
-    { value: 'female', label: 'Female' },
-    { value: 'non_binary_other', label: 'Non Binary / Other' },
-    { value: 'not_sure', label: "I'm Not Sure" },
-    { value: 'prefer_not_to_say', label: 'Prefer not to say' },
-  ];
-  let totalBuilders = $state(0);
   let keystrokes = $state(0);
   let canSubmit = $derived(projectName.trim() !== '' && projectDesc.trim() !== '' && projectType !== '' && !submitting);
   let hasScreenshots = $derived(screenshotPreviews[0] !== '' || screenshotPreviews[1] !== '');
@@ -498,8 +474,6 @@
     hackatimeProject = [];
     hackatimeOpen = false;
     isUpdateProject = false;
-    otherHcProgram = false;
-    otherHcProgramName = '';
     usedAi = false;
     aiUseDescription = '';
     keystrokes = 0;
@@ -643,8 +617,6 @@
     readmeUrl = project.readmeUrl ?? '';
     hackatimeProject = Array.isArray(project.hackatimeProjectName) ? project.hackatimeProjectName : project.hackatimeProjectName ? [project.hackatimeProjectName] : [];
     isUpdateProject = project.isUpdate ?? false;
-    otherHcProgram = !!(project.otherHcProgram);
-    otherHcProgramName = project.otherHcProgram ?? '';
     screenshotPreviews = [project.screenshot1Url ?? '', project.screenshot2Url ?? ''];
     usedAi = !!(project.aiUse);
     aiUseDescription = project.aiUse ?? '';
@@ -698,35 +670,6 @@
         }
       }
     } catch { /* silent */ }
-  }
-
-  async function fetchLeaderboard() {
-    leaderboardLoading = true;
-    try {
-      const res = await fetch(`/api/leaderboard?limit=${LEADERBOARD_PAGE_SIZE}&offset=0`);
-      if (res.ok) {
-        const data = await res.json();
-        leaderboard = Array.isArray(data.leaderboard) ? data.leaderboard : [];
-        totalBuilders = data.totalUsers ?? 0;
-        leaderboardTotal = typeof data.total === 'number' ? data.total : leaderboard.length;
-      }
-    } catch { /* silent */ }
-    leaderboardLoading = false;
-  }
-
-  async function loadMoreLeaderboard() {
-    if (leaderboardLoadingMore || leaderboard.length >= leaderboardTotal) return;
-    leaderboardLoadingMore = true;
-    try {
-      const res = await fetch(`/api/leaderboard?limit=${LEADERBOARD_PAGE_SIZE}&offset=${leaderboard.length}`);
-      if (res.ok) {
-        const data = await res.json();
-        const next = Array.isArray(data.leaderboard) ? data.leaderboard : [];
-        leaderboard = [...leaderboard, ...next];
-        if (typeof data.total === 'number') leaderboardTotal = data.total;
-      }
-    } catch { /* silent */ }
-    leaderboardLoadingMore = false;
   }
 
   async function fetchExploreProjects() {
@@ -808,16 +751,6 @@
     } catch { /* silent */ }
   }
 
-  async function fetchNews() {
-    try {
-      const res = await fetch('/api/news');
-      if (res.ok) {
-        const data = await res.json();
-        newsItems = Array.isArray(data) ? data : [];
-      }
-    } catch { /* silent */ }
-  }
-
   function timeAgo(dateStr: string): string {
     const iso = dateStr.endsWith('Z') || dateStr.includes('+') ? dateStr : dateStr + 'Z';
     const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -839,6 +772,8 @@
       if (res.ok) {
         const data = await res.json();
         hackatimeProjects = data.projects ?? [];
+        hackatimeConnected = !!data.connected;
+        hackatimeUserId = data.hackatimeUserId ?? null;
       }
     } catch { /* silently fail — dropdown stays empty */ }
     hackatimeLoading = false;
@@ -875,7 +810,6 @@
         demoUrl: demoUrl || null,
         hackatimeProjectName: hackatimeProject.length > 0 ? hackatimeProject : null,
         isUpdate: isUpdateProject,
-        otherHcProgram: otherHcProgram ? otherHcProgramName || null : null,
         aiUse: usedAi ? aiUseDescription || null : null,
       };
       // Only send screenshots if the user uploaded new files.
@@ -1020,7 +954,6 @@
         demoUrl: demoUrl || null,
         hackatimeProjectName: hackatimeProject.length > 0 ? hackatimeProject : null,
         isUpdate: isUpdateProject,
-        otherHcProgram: otherHcProgram ? otherHcProgramName || null : null,
         aiUse: usedAi ? aiUseDescription || null : null,
       };
       // Only send screenshots if the user uploaded new files — preserve existing ones otherwise
@@ -1164,140 +1097,31 @@
     selectedShopItem = null;
   }
 
-  // Shop suggestions state
-  type SuggestionType = {
-    id: string;
-    text: string;
-    createdAt: string;
-    authorName: string;
-    isMine: boolean;
-    voteCount: number;
-    votedByUser: boolean;
-  };
-  let suggestionsOpen = $state(false);
-  let suggestions = $state<SuggestionType[]>([]);
-  let suggestionsLoading = $state(false);
-  let newSuggestionText = $state('');
-  let suggestionSubmitting = $state(false);
-  let suggestionError = $state('');
-
-  async function openSuggestions() {
-    suggestionsOpen = true;
-    suggestionsLoading = true;
-    suggestionError = '';
-    try {
-      const res = await fetch('/api/shop/suggestions');
-      if (res.ok) suggestions = await res.json();
-    } catch { /* silent */ }
-    suggestionsLoading = false;
-  }
-
-  function closeSuggestions() {
-    suggestionsOpen = false;
-    newSuggestionText = '';
-    suggestionError = '';
-  }
-
-  async function submitSuggestion() {
-    const text = newSuggestionText.trim();
-    if (!text || suggestionSubmitting) return;
-    suggestionSubmitting = true;
-    suggestionError = '';
-    try {
-      const res = await fetch('/api/shop/suggestions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        suggestionError = data.message || 'Failed to submit';
-      } else {
-        newSuggestionText = '';
-        // Refresh list
-        const listRes = await fetch('/api/shop/suggestions');
-        if (listRes.ok) suggestions = await listRes.json();
-      }
-    } catch {
-      suggestionError = 'Network error — try again';
-    }
-    suggestionSubmitting = false;
-  }
-
-  async function toggleSuggestionVote(s: SuggestionType) {
-    // Optimistic update
-    const prev = { voteCount: s.voteCount, votedByUser: s.votedByUser };
-    const willVote = !s.votedByUser;
-    s.voteCount += willVote ? 1 : -1;
-    s.votedByUser = willVote;
-    suggestions = [...suggestions].sort((a, b) => b.voteCount - a.voteCount || (a.createdAt > b.createdAt ? -1 : 1));
-    try {
-      const res = await fetch(`/api/shop/suggestions/${s.id}/vote`, { method: 'POST' });
-      if (!res.ok) throw new Error('vote failed');
-      const data = await res.json();
-      const idx = suggestions.findIndex(x => x.id === s.id);
-      if (idx >= 0) {
-        suggestions[idx].voteCount = data.voteCount;
-        suggestions[idx].votedByUser = data.votedByUser;
-        suggestions = [...suggestions].sort((a, b) => b.voteCount - a.voteCount || (a.createdAt > b.createdAt ? -1 : 1));
-      }
-    } catch {
-      // Revert
-      s.voteCount = prev.voteCount;
-      s.votedByUser = prev.votedByUser;
-      suggestions = [...suggestions];
-    }
-  }
-
-  async function deleteSuggestion(id: string) {
-    try {
-      const res = await fetch(`/api/shop/suggestions/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        suggestions = suggestions.filter(s => s.id !== id);
-      }
-    } catch { /* silent */ }
-  }
-
-
-  let faqOpenIndex: number | null = $state(null);
-  const faqCfg = data.yswsConfig;
-  const faqWhenWhere = [faqCfg.event?.startDate && faqCfg.event?.endDate ? `${faqCfg.event.startDate} to ${faqCfg.event.endDate}` : null, faqCfg.event?.location].filter(Boolean).join(' at ');
-  const faqItems = [
-    { q: `What is ${faqCfg.program.name}?`, a: `${faqCfg.program.name} is a Hack Club You-Ship-We-Ship program: ${faqCfg.program.description} Participants build and ship real projects, document their process as they go, and earn ${faqCfg.currency.namePlural} for what they build.` },
-    { q: 'Who can participate?', a: 'Any teens 13-19 or in high school can participate.' },
-    { q: 'How much does it cost?', a: `${faqCfg.program.name} is completely free to participate in!` },
-    { q: `When and where does ${faqCfg.program.name} run?`, a: faqWhenWhere ? `${faqCfg.program.name} runs ${faqWhenWhere}.` : `Check the ${faqCfg.program.name} Slack channel for the current schedule.` },
-    { q: 'How do I qualify?', a: "Build an open source coding or hardware project! Anything you can dream up is possible, just make the project you want to exist. Please don't AI generate the project — instead focus on making something fun, useful to you, or something that forces you to learn something new." },
-    { q: 'Do I need prior engineering or building experience?', a: `No! Hack Club is all about learning by doing, so we welcome builders of all experience levels. We will provide resources and support along the way, and you can always ask for help in the ${faqCfg.program.name} channel on Slack.` },
-    { q: 'I have more questions — how do I get in touch?', a: `Reach out on the Hack Club Slack, or email ${faqCfg.admin.contactEmail}.` }
-  ];
 
   // `icon` is inline SVG content (Lucide-style, 24×24 viewBox, stroked with
   // currentColor) rendered inside the shared .nav-icon <svg> wrapper.
   const navItems = [
-    { id: 'projects', label: 'Projects', mobile: true, icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>' },
+    { id: 'dashboard', label: 'Dashboard', mobile: true, icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>' },
+    { id: 'buildlogs', label: 'Buildlogs', mobile: false, icon: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>' },
     { id: 'shop', label: 'Shop', mobile: true, icon: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>' },
-    { id: 'events', label: 'Events', mobile: true, icon: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>' },
-    { id: 'explore', label: 'Explore', mobile: true, icon: '<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>' },
-    { id: 'leaderboard', label: 'Leaderboard', mobile: false, icon: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>' },
-    { id: 'faq', label: 'FAQ', mobile: false, icon: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>' },
+    // Explore is hidden for now (its route 404s too, see explore/+page.server.ts). Uncomment to bring it back.
+    // { id: 'explore', label: 'Explore', mobile: true, icon: '<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>' },
     { id: 'me', label: 'Me', mobile: true, icon: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
-    { id: 'devlogs', label: 'Devlogs', mobile: false, icon: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>' },
-    { id: 'tutorial', label: 'Tutorial', mobile: false, icon: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>' }
   ];
 
   function loadSectionData(id: string) {
     if (id === 'shop') { fetchShopItems(); fetchPipes(); fetchUserOrders(); }
-    if (id === 'me') { fetchFulfillmentUpdates(); markFulfillmentRead(); }
-    if (id === 'devlogs') { fetchDevlogs(); }
+    // Mark read only after the list has loaded, so unread updates still show their highlight once.
+    if (id === 'dashboard') { fetchFulfillmentUpdates().then(markFulfillmentRead); }
+    if (id === 'buildlogs') { fetchBuildlogs(); }
+    if (id === 'explore') { fetchExploreProjects(); }
   }
 
   function navigate(id: string) {
-    if (id === 'tutorial') { goto('/tutorial'); return; }
     if (creatingProject || editingProject || reviewProject) resetForm();
     activeSection = id;
     loadSectionData(id);
-    pushState(sectionRoutes[id] ?? '/projects', {});
+    pushState(sectionRoutes[id] ?? '/dashboard', {});
   }
 
   async function fetchPipes() {
@@ -1397,114 +1221,114 @@
     fulfillmentLoading = false;
   }
 
-  /* ────────────────  Devlogs  ──────────────── */
+  /* ────────────────  Buildlogs  ──────────────── */
 
-  async function fetchDevlogs() {
-    devlogsLoading = true;
+  async function fetchBuildlogs() {
+    buildlogsLoading = true;
     try {
-      const res = await fetch('/api/devlogs');
-      if (res.ok) devlogs = await res.json();
+      const res = await fetch('/api/buildlogs');
+      if (res.ok) buildlogs = await res.json();
     } catch { /* silent */ }
-    devlogsLoading = false;
+    buildlogsLoading = false;
   }
 
-  function handleDevlogImage(e: Event) {
+  function handleBuildlogImage(e: Event) {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
     if (!['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(file.type)) {
-      devlogError = 'Image must be a PNG, JPEG, GIF, or WebP';
+      buildlogError = 'Image must be a PNG, JPEG, GIF, or WebP';
       input.value = '';
       return;
     }
-    const idx = devlogPreviews.findIndex((p) => p === '');
+    const idx = buildlogPreviews.findIndex((p) => p === '');
     if (idx === -1) {
-      devlogError = `Up to ${DEVLOG_MAX_IMAGES} images per devlog`;
+      buildlogError = `Up to ${BUILDLOG_MAX_IMAGES} images per buildlog`;
       input.value = '';
       return;
     }
-    devlogFiles[idx] = file;
-    devlogPreviews[idx] = URL.createObjectURL(file);
-    devlogError = '';
+    buildlogFiles[idx] = file;
+    buildlogPreviews[idx] = URL.createObjectURL(file);
+    buildlogError = '';
     input.value = '';
   }
 
-  function removeDevlogImage(idx: number) {
-    devlogFiles[idx] = null;
-    devlogPreviews[idx] = '';
+  function removeBuildlogImage(idx: number) {
+    buildlogFiles[idx] = null;
+    buildlogPreviews[idx] = '';
     // Compact the arrays so newly added images fill from the start.
-    devlogFiles = [...devlogFiles.filter((f) => f !== null), null, null, null, null].slice(0, DEVLOG_MAX_IMAGES);
-    devlogPreviews = [...devlogPreviews.filter((p) => p !== ''), '', '', '', ''].slice(0, DEVLOG_MAX_IMAGES);
+    buildlogFiles = [...buildlogFiles.filter((f) => f !== null), null, null, null, null].slice(0, BUILDLOG_MAX_IMAGES);
+    buildlogPreviews = [...buildlogPreviews.filter((p) => p !== ''), '', '', '', ''].slice(0, BUILDLOG_MAX_IMAGES);
   }
 
-  function resetDevlogForm() {
-    devlogTitle = '';
-    devlogText = '';
-    devlogProjectId = '';
-    devlogFiles = [null, null, null, null];
-    devlogPreviews = ['', '', '', ''];
-    devlogError = '';
-    devlogLookoutSessionId = null;
-    devlogLookoutSessions = [];
+  function resetBuildlogForm() {
+    buildlogTitle = '';
+    buildlogText = '';
+    buildlogProjectId = '';
+    buildlogFiles = [null, null, null, null];
+    buildlogPreviews = ['', '', '', ''];
+    buildlogError = '';
+    buildlogLookoutSessionId = null;
+    buildlogLookoutSessions = [];
   }
 
-  async function submitDevlog() {
-    if (devlogSubmitting) return;
-    const trimmedTitle = devlogTitle.trim();
-    const trimmed = devlogText.trim();
+  async function submitBuildlog() {
+    if (buildlogSubmitting) return;
+    const trimmedTitle = buildlogTitle.trim();
+    const trimmed = buildlogText.trim();
     if (!trimmedTitle) {
-      devlogError = 'Give your devlog a short title';
+      buildlogError = 'Give your buildlog a short title';
       return;
     }
     if (!trimmed) {
-      devlogError = 'Write something for your devlog first';
+      buildlogError = 'Write something for your buildlog first';
       return;
     }
-    if (!devlogProjectId) {
-      devlogError = 'Pick the project this devlog is for';
+    if (!buildlogProjectId) {
+      buildlogError = 'Pick the project this buildlog is for';
       return;
     }
-    devlogSubmitting = true;
-    devlogError = '';
+    buildlogSubmitting = true;
+    buildlogError = '';
     try {
       const images: string[] = [];
-      for (const file of devlogFiles) {
+      for (const file of buildlogFiles) {
         if (file) images.push(await fileToDataUri(file));
       }
-      const res = await fetch('/api/devlogs', {
+      const res = await fetch('/api/buildlogs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: trimmedTitle,
           text: trimmed,
-          projectId: devlogProjectId,
+          projectId: buildlogProjectId,
           images,
-          lookoutSessionId: devlogLookoutSessionId ?? undefined,
+          lookoutSessionId: buildlogLookoutSessionId ?? undefined,
         }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        devlogError = data?.message || 'Failed to post devlog';
+        buildlogError = data?.message || 'Failed to post buildlog';
       } else {
-        resetDevlogForm();
-        devlogFormOpen = false;
-        await fetchDevlogs();
+        resetBuildlogForm();
+        buildlogFormOpen = false;
+        await fetchBuildlogs();
       }
     } catch {
-      devlogError = 'Network error. Try again.';
+      buildlogError = 'Network error. Try again.';
     }
-    devlogSubmitting = false;
+    buildlogSubmitting = false;
   }
 
-  async function deleteDevlog(id: string) {
-    if (!confirm('Delete this devlog?')) return;
+  async function deleteBuildlog(id: string) {
+    if (!confirm('Delete this buildlog?')) return;
     try {
-      const res = await fetch(`/api/devlogs/${id}`, { method: 'DELETE' });
-      if (res.ok) devlogs = devlogs.filter((d) => d.id !== id);
+      const res = await fetch(`/api/buildlogs/${id}`, { method: 'DELETE' });
+      if (res.ok) buildlogs = buildlogs.filter((d) => d.id !== id);
     } catch { /* silent */ }
   }
 
-  function devlogProjectName(id: string | null): string | null {
+  function buildlogProjectName(id: string | null): string | null {
     if (!id) return null;
     const p = projects.find((p) => p.id === id);
     return p?.name ?? null;
@@ -1544,22 +1368,6 @@
     nicknameSaving = false;
   }
 
-  async function saveGender(value: string) {
-    if (!value || value === data.user.gender) return;
-    genderSaving = true;
-    try {
-      const res = await fetch('/api/auth/gender', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gender: value })
-      });
-      if (res.ok) {
-        data.user.gender = value;
-      }
-    } catch { /* ignore */ }
-    genderSaving = false;
-  }
-
   onMount(() => {
     if (customCursorEnabled) {
       document.documentElement.classList.add('custom-cursor');
@@ -1570,15 +1378,12 @@
     fetchProjects();
     fetchHackatimeProjects();
     fetchAuditLog();
-    fetchNews();
-    fetchLeaderboard();
-    fetchExploreProjects();
     fetchPipes();
     fetchUnreadCount();
     loadSectionData(activeSection);
-    // Returning from the Lookout recorder? Re-open the devlog draft we stashed.
+    // Returning from the Lookout recorder? Re-open the buildlog draft we stashed.
     // Otherwise fall back to the locally autosaved draft (reload / window close).
-    if (!restoreDevlogDraft()) restoreDevlogAutosave();
+    if (!restoreBuildlogDraft()) restoreBuildlogAutosave();
 
     const handlePopstate = () => {
       const section = sectionFromPath(window.location.pathname);
@@ -1612,7 +1417,7 @@
               >
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{@html item.icon}</svg>
                 <span class="nav-label">{item.label}</span>
-                {#if item.id === 'me' && unreadCount > 0}
+                {#if item.id === 'dashboard' && unreadCount > 0}
                   <span class="nav-notif"></span>
                 {/if}
               </button>
@@ -1922,7 +1727,7 @@
                     {#if hackatimeLoading}
                       <span class="hackatime-empty">Loading...</span>
                     {:else if hackatimeProjects.length === 0}
-                      <span class="hackatime-empty">No projects found, redo tutorial?</span>
+                      <span class="hackatime-empty">No projects found, connect Hackatime with the button on the right</span>
                     {:else}
                       {#each hackatimeProjects as proj}
                         <label class="hackatime-option">
@@ -1957,10 +1762,6 @@
             <input type="checkbox" bind:checked={isUpdateProject} />
             <span class="noselect">This is an update to an existing project</span>
           </label>
-          <label class="form-checkbox">
-            <input type="checkbox" bind:checked={otherHcProgram} />
-            <span class="noselect">This is submitted to another Hack Club program</span>
-          </label>
         </div>
 
       </div>
@@ -1970,12 +1771,6 @@
       {/if}
 
       <div class="form-bottom-row">
-        {#if otherHcProgram}
-        <div class="form-group other-program-group">
-          <label class="form-label" for="other-program">Which program?</label>
-          <input id="other-program" type="text" class="form-input" maxlength={255} placeholder="e.g. Boba Drops, Flavortown" bind:value={otherHcProgramName} />
-        </div>
-        {/if}
         {#if editingProject?.status === 'unreviewed'}
           <div class="in-review-notice">
             <p class="in-review-text">This project is currently in review. You can still work on it and track hours, but you can't resubmit until it's been reviewed.</p>
@@ -2029,50 +1824,6 @@
         <g fill="var(--color-border)"><circle cx="50" cy="50" r="30"/>{#each Array(8) as _, t (t)}<rect x="43" y="4" width="14" height="22" rx="3" transform="rotate({t*45} 50 50)"/>{/each}</g><circle cx="50" cy="50" r="12" fill="var(--color-bg)"/>
       </svg>
     </div>
-    {/if}
-
-    {#if activeSection === 'events'}
-    <section class="section section-events">
-      <div class="section-inner">
-        <h2 class="section-title">Upcoming Events</h2>
-        {#if eventItems.length === 0}
-          <p class="section-copy">No upcoming events are scheduled yet.</p>
-        {:else}
-          <div class="events-grid">
-            {#each eventItems as event}
-              <article class="event-card">
-                <div class="event-card-meta">
-                  <time datetime={event.startAt}>{formatLocal(event.startAt)}</time>
-                  {#if event.endAt}
-                    <span>— {formatLocal(event.endAt)}</span>
-                  {/if}
-                </div>
-                <h3>{event.title}</h3>
-                {#if event.hostedBy}
-                  <p class="event-hosted-by">
-                    Hosted by
-                    {#if event.hostedBySlackId}
-                      <a href={slackUserUrl(event.hostedBySlackId)} target="_blank" rel="noopener noreferrer">{event.hostedByName ?? event.hostedBySlackId}</a>
-                    {:else}
-                      {event.hostedByName ?? event.hostedBy}
-                    {/if}
-                  </p>
-                {/if}
-                {#if event.location}
-                  <p class="event-location">{event.location}</p>
-                {/if}
-                {#if event.description}
-                  <p>{event.description}</p>
-                {/if}
-                {#if event.url}
-                  <p><a href={event.url} target="_blank" rel="noopener noreferrer">Event details</a></p>
-                {/if}
-              </article>
-            {/each}
-          </div>
-        {/if}
-      </div>
-    </section>
     {/if}
 
     {#if showShippingPrompt && shippingCheck}
@@ -2206,12 +1957,12 @@
     </section>
     {/if}
 
-    {#if !creatingProject && !editingProject && !reviewProject && activeSection === 'projects'}
-    <section class="section section-projects">
+    {#if !creatingProject && !editingProject && !reviewProject && activeSection === 'dashboard'}
+    <section class="section section-dashboard">
       <div class="section-inner">
         <div class="section-header">
           <div>
-            <h2 class="section-title">My Projects</h2>
+            <h2 class="section-title">Dashboard</h2>
             <p class="section-subtitle">Track your progress and hours.</p>
           </div>
         </div>
@@ -2288,16 +2039,21 @@
           </div>
         </div>
 
-        <div class="news-box">
-          <h3 class="news-title">News</h3>
-          <div class="news-list">
-            {#if newsItems.length === 0}
-              <p class="news-empty">No news yet.</p>
+        <div class="updates-box">
+          <h3 class="updates-title">Fulfillment Updates</h3>
+          <div class="updates-list">
+            {#if fulfillmentLoading}
+              <p class="fulfillment-empty">Loading...</p>
+            {:else if fulfillmentUpdates.length === 0}
+              <p class="fulfillment-empty">No updates yet. Place an order from the Shop to see updates here!</p>
             {:else}
-              {#each newsItems as item}
-                <div class="news-item">
-                  <span class="news-date">{new Date(item.displayDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                  <p class="news-text">{item.text}</p>
+              {#each fulfillmentUpdates as update}
+                <div class="fulfillment-item" class:fulfillment-unread={!update.isRead}>
+                  <div class="fulfillment-item-header">
+                    <span class="fulfillment-item-name">{update.itemName}</span>
+                    <span class="fulfillment-item-date">{new Date(update.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <p class="fulfillment-item-msg">{update.message}</p>
                 </div>
               {/each}
             {/if}
@@ -2316,17 +2072,17 @@
             <div class="shop-header">
               <div class="shop-header-copy">
                 <h2 class="section-title">Earn Prizes</h2>
-                <p class="section-subtitle shop-subtitle">Build projects, earn approved hours, spend them here.<br><b>Hours spent in the shop no longer count toward qualifying!</b></p>
+                <p class="section-subtitle shop-subtitle">Build projects, earn approved hours, spend them here.<br><b>1 approved hour = 1 gain</b></p>
               </div>
               <div class="shop-header-actions">
-                <button class="suggestions-btn" type="button" onclick={openSuggestions} aria-label="Shop suggestions">
+                <a class="suggestions-btn" href="https://hackclub.slack.com/app_redirect?channel=lifemaxx" target="_blank" rel="noopener noreferrer" aria-label="Suggest shop items in #lifemaxx on Slack">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="suggestions-icon" aria-hidden="true">
                     <path d="M9 18h6" />
                     <path d="M10 22h4" />
                     <path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z" />
                   </svg>
                   <span>Suggestions</span>
-                </button>
+                </a>
                 <div class="pipes-box">
                   <img src={data.yswsConfig.currency.iconAsset} alt="" class="pipe-img" />
                   <div class="pipes-box-text">
@@ -2604,74 +2360,6 @@
     </div>
     {/if}
 
-    <!-- Shop suggestions modal -->
-    {#if suggestionsOpen}
-    <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-    <div use:portal class="suggestions-overlay" onclick={closeSuggestions} onkeydown={(e) => { if (e.key === 'Escape') closeSuggestions(); }}>
-      <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-      <div class="suggestions-modal" onclick={(e) => e.stopPropagation()}>
-        <button class="suggestions-close" onclick={closeSuggestions} type="button" aria-label="Close">&times;</button>
-        <h2 class="suggestions-title">Shop Suggestions</h2>
-        <p class="suggestions-subtitle">What should we add to the shop? Upvote ideas you like.</p>
-
-        <div class="suggestions-new">
-          <textarea
-            class="suggestions-input"
-            placeholder="Suggest a new shop item..."
-            maxlength="200"
-            bind:value={newSuggestionText}
-            disabled={suggestionSubmitting}
-          ></textarea>
-          <div class="suggestions-new-footer">
-            <span class="suggestions-counter">{newSuggestionText.length}/200</span>
-            <button
-              class="suggestions-submit"
-              type="button"
-              onclick={submitSuggestion}
-              disabled={!newSuggestionText.trim() || suggestionSubmitting}
-            >{suggestionSubmitting ? 'Submitting...' : 'Suggest'}</button>
-          </div>
-          {#if suggestionError}
-            <p class="suggestions-error">{suggestionError}</p>
-          {/if}
-        </div>
-
-        <div class="suggestions-list">
-          {#if suggestionsLoading}
-            <p class="suggestions-empty">Loading...</p>
-          {:else if suggestions.length === 0}
-            <p class="suggestions-empty">No suggestions yet — be the first!</p>
-          {:else}
-            {#each suggestions as s (s.id)}
-              <div class="suggestion-row">
-                <button
-                  class="suggestion-vote"
-                  class:voted={s.votedByUser}
-                  type="button"
-                  onclick={() => toggleSuggestionVote(s)}
-                  aria-label={s.votedByUser ? 'Remove upvote' : 'Upvote'}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <polyline points="6 14 12 8 18 14" />
-                  </svg>
-                  <span class="suggestion-vote-count">{s.voteCount}</span>
-                </button>
-                <div class="suggestion-body">
-                  <p class="suggestion-text">{s.text}</p>
-                  <p class="suggestion-meta">
-                    <span>by {s.authorName}</span>
-                    {#if s.isMine}
-                      <button class="suggestion-delete" type="button" onclick={() => deleteSuggestion(s.id)}>Delete</button>
-                    {/if}
-                  </p>
-                </div>
-              </div>
-            {/each}
-          {/if}
-        </div>
-      </div>
-    </div>
-    {/if}
     {/if}
 
     {#if activeSection === 'explore'}
@@ -2742,229 +2430,145 @@
     </section>
     {/if}
 
-    {#if activeSection === 'leaderboard'}
-    <section class="section section-leaderboard">
+    {#if activeSection === 'buildlogs'}
+    <section class="section section-buildlogs">
       <div class="section-inner">
-        <div class="leaderboard-head">
-          <div>
-            <h2 class="section-title">Leaderboard</h2>
-            <p class="section-subtitle">Top builders by approved hours.</p>
-          </div>
-          <div class="lb-total-users">
-            <span class="lb-total-label">Builders</span>
-            <span class="lb-total-value">{leaderboardLoading ? '—' : totalBuilders}</span>
-          </div>
-        </div>
-        <div class="leaderboard-table">
-          <div class="leaderboard-header">
-            <span class="lb-rank">#</span>
-            <span class="lb-name">Builder</span>
-            <span class="lb-hours">Hours</span>
-          </div>
-          {#if leaderboardLoading}
-            {#each Array(10) as _, i}
-              <div class="leaderboard-row">
-                <span class="lb-rank">{i + 1}</span>
-                <span class="lb-name skeleton-text"></span>
-                <span class="lb-hours skeleton-text short"></span>
-              </div>
-            {/each}
-          {:else if leaderboard.length > 0}
-            {#each leaderboard as entry, i}
-              <div class="leaderboard-row" class:top-three={i < 3}>
-                <span class="lb-rank">{i + 1}</span>
-                <span class="lb-name">{entry.name}</span>
-                <span class="lb-hours">{Math.round(entry.hours * 10) / 10}h</span>
-              </div>
-            {/each}
-            {#if leaderboard.length < leaderboardTotal}
-              <button
-                type="button"
-                class="lb-show-more"
-                onclick={loadMoreLeaderboard}
-                disabled={leaderboardLoadingMore}>
-                {#if leaderboardLoadingMore}
-                  Loading…
-                {:else}
-                  Show more ({Math.min(LEADERBOARD_PAGE_SIZE, leaderboardTotal - leaderboard.length)} more)
-                {/if}
-              </button>
-            {/if}
-          {/if}
-        </div>
-      </div>
-    </section>
-    {/if}
+        <h2 class="section-title">Buildlogs</h2>
+        <p class="buildlogs-blurb">Buildlogs are <strong>mandatory for hardware projects</strong> and optional for software.</p>
 
-    {#if activeSection === 'faq'}
-    <section class="section section-faq">
-      <div class="faq-page">
-        <h2 class="faq-title">Frequently Asked Questions</h2>
-        <p class="faq-intro">I'm sure you have lots of questions! Below is the most common ones I see, but if you need more help please email {data.yswsConfig.admin.contactEmail} or ask in the {data.yswsConfig.program.name} Slack channel</p>
-
-        <div class="faq-list">
-          {#each faqItems as faq, i (faq.q)}
-            <button
-              class="faq-item"
-              class:open={faqOpenIndex === i}
-              onclick={() => faqOpenIndex = faqOpenIndex === i ? null : i}
-              aria-expanded={faqOpenIndex === i}
-            >
-              <div class="faq-question">
-                <span>{faq.q}</span>
-                <span class="faq-icon" class:rotated={faqOpenIndex === i}>+</span>
-              </div>
-              {#if faqOpenIndex === i}
-                <div class="faq-answer">
-                  <p>{faq.a}</p>
-                </div>
-              {/if}
-            </button>
-          {/each}
-        </div>
-      </div>
-    </section>
-    {/if}
-
-    {#if activeSection === 'devlogs'}
-    <section class="section section-devlogs">
-      <div class="section-inner">
-        <h2 class="section-title">Devlogs</h2>
-        <p class="devlogs-blurb">Devlogs are <strong>mandatory for hardware projects</strong> and optional for software.</p>
-
-        {#if !devlogFormVisible}
-          <button class="devlog-new-btn" onclick={() => { devlogFormOpen = true; }}>+ New devlog</button>
+        {#if !buildlogFormVisible}
+          <button class="buildlog-new-btn" onclick={() => { buildlogFormOpen = true; }}>+ New buildlog</button>
         {/if}
 
-        {#if devlogFormVisible}
-        <div class="devlog-create">
-          <div class="devlog-form">
-            <div class="devlog-field">
-              <label class="form-label" for="devlog-project">Project <span class="required">*</span></label>
-              <select id="devlog-project" class="form-input form-select devlog-select" bind:value={devlogProjectId}>
-                <option value="" disabled>{projects.length === 0 ? 'Create a project first' : 'Select a project to link this devlog to'}</option>
+        {#if buildlogFormVisible}
+        <div class="buildlog-create">
+          <div class="buildlog-form">
+            <div class="buildlog-field">
+              <label class="form-label" for="buildlog-project">Project <span class="required">*</span></label>
+              <select id="buildlog-project" class="form-input form-select buildlog-select" bind:value={buildlogProjectId}>
+                <option value="" disabled>{projects.length === 0 ? 'Create a project first' : 'Select a project to link this buildlog to'}</option>
                 {#each projects as p}
                   <option value={p.id}>{p.name}</option>
                 {/each}
               </select>
             </div>
 
-            <div class="devlog-field">
-              <label class="form-label" for="devlog-title">Title <span class="required">*</span></label>
+            <div class="buildlog-field">
+              <label class="form-label" for="buildlog-title">Title <span class="required">*</span></label>
               <input
-                id="devlog-title"
+                id="buildlog-title"
                 type="text"
-                class="form-input devlog-input"
-                maxlength={DEVLOG_TITLE_MAX}
-                bind:value={devlogTitle}
+                class="form-input buildlog-input"
+                maxlength={BUILDLOG_TITLE_MAX}
+                bind:value={buildlogTitle}
               />
               <div class="form-caption-row">
-                <span class="form-charcount" class:over={devlogTitle.length >= DEVLOG_TITLE_MAX}>{devlogTitle.length}/{DEVLOG_TITLE_MAX}</span>
+                <span class="form-charcount" class:over={buildlogTitle.length >= BUILDLOG_TITLE_MAX}>{buildlogTitle.length}/{BUILDLOG_TITLE_MAX}</span>
               </div>
             </div>
 
-            <div class="devlog-field">
-              <label class="form-label" for="devlog-text">What did you work on?</label>
+            <div class="buildlog-field">
+              <label class="form-label" for="buildlog-text">What did you work on?</label>
               <textarea
-                id="devlog-text"
-                class="form-input form-textarea devlog-textarea"
-                maxlength={DEVLOG_TEXT_MAX}
-                bind:value={devlogText}
+                id="buildlog-text"
+                class="form-input form-textarea buildlog-textarea"
+                maxlength={BUILDLOG_TEXT_MAX}
+                bind:value={buildlogText}
               ></textarea>
               <div class="form-caption-row">
-                <span class="form-charcount" class:over={devlogText.length >= DEVLOG_TEXT_MAX}>{devlogText.length}/{DEVLOG_TEXT_MAX}</span>
+                <span class="form-charcount" class:over={buildlogText.length >= BUILDLOG_TEXT_MAX}>{buildlogText.length}/{BUILDLOG_TEXT_MAX}</span>
               </div>
             </div>
 
-            <div class="devlog-field">
+            <div class="buildlog-field">
               <span class="form-label">Timelapse (Lookout) <span class="optional">optional</span></span>
               <div class="lookout-block">
                 <button
                   type="button"
                   class="lookout-record-btn"
-                  disabled={devlogLookoutBusy || !devlogProjectId}
-                  onclick={startDevlogRecording}
+                  disabled={buildlogLookoutBusy || !buildlogProjectId}
+                  onclick={startBuildlogRecording}
                 >
-                  {devlogLookoutBusy ? 'Opening Lookout…' : '🎥 Record a timelapse'}
+                  {buildlogLookoutBusy ? 'Opening Lookout…' : '🎥 Record a timelapse'}
                 </button>
-                {#if devlogLookoutSessionsLoading}
+                {#if buildlogLookoutSessionsLoading}
                   <span class="lookout-hint">Checking for saved Lookout sessions…</span>
-                {:else if devlogLookoutSessions.length > 0}
+                {:else if buildlogLookoutSessions.length > 0}
                   <button type="button" class="lookout-choose-btn" onclick={() => lookoutPickerOpen = true}>
                     <span>{selectedLookoutLabel()}</span>
                     <span class="lookout-choose-caret" aria-hidden="true">▾</span>
                   </button>
                 {/if}
-                {#if devlogLookoutSessionId}
-                  <span class="lookout-attached">Recording attached — finish in the Lookout app; it'll appear on this devlog once it's done.</span>
+                {#if buildlogLookoutSessionId}
+                  <span class="lookout-attached">Recording attached — finish in the Lookout app; it'll appear on this buildlog once it's done.</span>
                 {:else}
                   <span class="lookout-hint">Opens the Lookout desktop app to record. <a href="https://lookout.hackclub.com" target="_blank" rel="noopener">Don't have it?</a></span>
                 {/if}
               </div>
             </div>
-            {#if devlogError}
-              <p class="form-error">{devlogError}</p>
+            {#if buildlogError}
+              <p class="form-error">{buildlogError}</p>
             {/if}
 
-            <button class="btn-primary devlog-submit" onclick={submitDevlog} disabled={devlogSubmitting || !devlogTitle.trim() || !devlogText.trim() || !devlogProjectId}>
-              {devlogSubmitting ? 'Posting…' : 'Post devlog'}
+            <button class="btn-primary buildlog-submit" onclick={submitBuildlog} disabled={buildlogSubmitting || !buildlogTitle.trim() || !buildlogText.trim() || !buildlogProjectId}>
+              {buildlogSubmitting ? 'Posting…' : 'Post buildlog'}
             </button>
           </div>
 
-          <aside class="devlog-images-card" aria-label="Devlog images">
-            <span class="form-label devlog-images-label">Images</span>
-            <div class="devlog-images-grid">
-              {#each Array(DEVLOG_MAX_IMAGES) as _, i (i)}
-                {#if devlogPreviews[i]}
-                  <div class="devlog-image-thumb">
-                    <img src={devlogPreviews[i]} alt="Attachment {i + 1}" />
-                    <button type="button" class="devlog-image-remove" onclick={() => removeDevlogImage(i)} aria-label="Remove image">&times;</button>
+          <aside class="buildlog-images-card" aria-label="Buildlog images">
+            <span class="form-label buildlog-images-label">Images</span>
+            <div class="buildlog-images-grid">
+              {#each Array(BUILDLOG_MAX_IMAGES) as _, i (i)}
+                {#if buildlogPreviews[i]}
+                  <div class="buildlog-image-thumb">
+                    <img src={buildlogPreviews[i]} alt="Attachment {i + 1}" />
+                    <button type="button" class="buildlog-image-remove" onclick={() => removeBuildlogImage(i)} aria-label="Remove image">&times;</button>
                   </div>
-                {:else if i === devlogPreviews.findIndex((p) => p === '')}
-                  <label class="devlog-image-add" for="devlog-image" title="Add image">
+                {:else if i === buildlogPreviews.findIndex((p) => p === '')}
+                  <label class="buildlog-image-add" for="buildlog-image" title="Add image">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <line x1="12" y1="5" x2="12" y2="19" />
                       <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                   </label>
                 {:else}
-                  <div class="devlog-image-empty" aria-hidden="true"></div>
+                  <div class="buildlog-image-empty" aria-hidden="true"></div>
                 {/if}
               {/each}
             </div>
-            <input id="devlog-image" type="file" accept="image/*" class="form-file-hidden" onchange={handleDevlogImage} />
-            <p class="devlog-images-hint">Up to {DEVLOG_MAX_IMAGES} images, 8 MB each.</p>
+            <input id="buildlog-image" type="file" accept="image/*" class="form-file-hidden" onchange={handleBuildlogImage} />
+            <p class="buildlog-images-hint">Up to {BUILDLOG_MAX_IMAGES} images, 8 MB each.</p>
           </aside>
         </div>
-        {#if devlogs.length > 0}
-          <button type="button" class="devlog-cancel-btn" onclick={() => { devlogFormOpen = false; resetDevlogForm(); }}>Cancel</button>
+        {#if buildlogs.length > 0}
+          <button type="button" class="buildlog-cancel-btn" onclick={() => { buildlogFormOpen = false; resetBuildlogForm(); }}>Cancel</button>
         {/if}
         {/if}
 
-        <div class="devlogs-list">
-          {#if devlogsLoading && devlogs.length === 0}
-            <p class="devlog-empty">Loading…</p>
-          {:else if devlogs.length > 0}
-            {#each devlogs as dl (dl.id)}
-              <article class="devlog-card">
-                <header class="devlog-card-header">
-                  <span class="devlog-card-project">{devlogProjectName(dl.projectId) ?? 'Project removed'}</span>
-                  <span class="devlog-card-time">{formatLocal(dl.createdAt)}</span>
-                  <button class="devlog-card-delete" onclick={() => deleteDevlog(dl.id)} title="Delete devlog">×</button>
+        <div class="buildlogs-list">
+          {#if buildlogsLoading && buildlogs.length === 0}
+            <p class="buildlog-empty">Loading…</p>
+          {:else if buildlogs.length > 0}
+            {#each buildlogs as dl (dl.id)}
+              <article class="buildlog-card">
+                <header class="buildlog-card-header">
+                  <span class="buildlog-card-project">{buildlogProjectName(dl.projectId) ?? 'Project removed'}</span>
+                  <span class="buildlog-card-time">{formatLocal(dl.createdAt)}</span>
+                  <button class="buildlog-card-delete" onclick={() => deleteBuildlog(dl.id)} title="Delete buildlog">×</button>
                 </header>
-                <h3 class="devlog-card-title">{dl.title}</h3>
-                <p class="devlog-card-text">{dl.text}</p>
+                <h3 class="buildlog-card-title">{dl.title}</h3>
+                <p class="buildlog-card-text">{dl.text}</p>
                 {#if dl.imageUrls && dl.imageUrls.length > 0}
-                  <div class="devlog-card-images">
+                  <div class="buildlog-card-images">
                     {#each dl.imageUrls as url}
-                      <button type="button" class="devlog-card-image-btn" onclick={() => openDevlogLightbox(url)}>
-                        <img src={url} alt="Devlog attachment" loading="lazy" />
+                      <button type="button" class="buildlog-card-image-btn" onclick={() => openBuildlogLightbox(url)}>
+                        <img src={url} alt="Buildlog attachment" loading="lazy" />
                       </button>
                     {/each}
                   </div>
                 {/if}
                 {#if dl.lookout}
-                  <div class="devlog-card-lookout">
+                  <div class="buildlog-card-lookout">
                     {#if dl.lookout.status === 'complete' && dl.lookout.videoUrl}
                       <details class="lookout-dropdown">
                         <summary class="lookout-summary">
@@ -3014,7 +2618,7 @@
                 <h3 class="settings-link-title">Safeguarding Policy</h3>
                 <p class="settings-link-desc">How we keep our community safe.</p>
               </a>
-              <a href="https://hackclub.enterprise.slack.com/archives/C0AQ4T1CWH2" target="_blank" rel="noopener" class="settings-link">
+              <a href="https://hackclub.slack.com/app_redirect?channel=lifemaxx" target="_blank" rel="noopener" class="settings-link">
                 <h3 class="settings-link-title">Get Help</h3>
                 <p class="settings-link-desc">Ask questions in the {data.yswsConfig.program.name} Slack channel.</p>
               </a>
@@ -3090,40 +2694,16 @@
                   </span>
                 </div>
                 <div class="account-field">
-                  <span class="account-label">Gender</span>
-                  <select
-                    class="gender-select"
-                    value={data.user.gender ?? ''}
-                    disabled={genderSaving}
-                    onchange={(e) => saveGender(e.currentTarget.value)}
-                  >
-                    <option value="" disabled>Select…</option>
-                    {#each GENDER_OPTIONS as opt}
-                      <option value={opt.value}>{opt.label}</option>
-                    {/each}
-                  </select>
+                  <span class="account-label">Hackatime ID</span>
+                  {#if hackatimeConnected === false}
+                    <form method="POST" action="/api/auth/hackatime/start">
+                      <button type="submit" class="nickname-save">Connect to Hackatime</button>
+                    </form>
+                  {:else}
+                    <span class="account-value">{hackatimeConnected ? (hackatimeUserId ?? 'Connected') : '—'}</span>
+                  {/if}
                 </div>
               </div>
-            </div>
-            <div class="account-card fulfillment-card">
-              <h3 class="account-card-heading">Fulfillment Updates</h3>
-              {#if fulfillmentLoading}
-                <p class="fulfillment-empty">Loading...</p>
-              {:else if fulfillmentUpdates.length === 0}
-                <p class="fulfillment-empty">No updates yet. Place an order from the Shop to see updates here!</p>
-              {:else}
-                <div class="fulfillment-list">
-                  {#each fulfillmentUpdates as update}
-                    <div class="fulfillment-item" class:fulfillment-unread={!update.isRead}>
-                      <div class="fulfillment-item-header">
-                        <span class="fulfillment-item-name">{update.itemName}</span>
-                        <span class="fulfillment-item-date">{new Date(update.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      <p class="fulfillment-item-msg">{update.message}</p>
-                    </div>
-                  {/each}
-                </div>
-              {/if}
             </div>
           </div>
         </div>
@@ -3247,14 +2827,14 @@
   {/if}
 </div>
 
-<svelte:window onkeydown={onDevlogLightboxKey} />
+<svelte:window onkeydown={onBuildlogLightboxKey} />
 
-{#if devlogLightbox}
+{#if buildlogLightbox}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="devlog-lightbox" onclick={closeDevlogLightbox} role="dialog" aria-modal="true" aria-label="Devlog image">
-    <img src={devlogLightbox} alt="Devlog attachment full size" onclick={(e) => e.stopPropagation()} />
-    <button type="button" class="devlog-lightbox-close" onclick={closeDevlogLightbox} aria-label="Close">&times;</button>
+  <div class="buildlog-lightbox" onclick={closeBuildlogLightbox} role="dialog" aria-modal="true" aria-label="Buildlog image">
+    <img src={buildlogLightbox} alt="Buildlog attachment full size" onclick={(e) => e.stopPropagation()} />
+    <button type="button" class="buildlog-lightbox-close" onclick={closeBuildlogLightbox} aria-label="Close">&times;</button>
   </div>
 {/if}
 
@@ -3272,13 +2852,13 @@
         <button
           type="button"
           class="lapse-record"
-          disabled={devlogLookoutBusy || !devlogProjectId}
-          onclick={() => { lookoutPickerOpen = false; startDevlogRecording(); }}
+          disabled={buildlogLookoutBusy || !buildlogProjectId}
+          onclick={() => { lookoutPickerOpen = false; startBuildlogRecording(); }}
         >
-          {devlogLookoutBusy ? 'Opening Lookout…' : '🎥 Record new timelapse'}
+          {buildlogLookoutBusy ? 'Opening Lookout…' : '🎥 Record new timelapse'}
         </button>
       </div>
-      {#if devlogLookoutSessionsLoading}
+      {#if buildlogLookoutSessionsLoading}
         <div class="lapse-grid" aria-hidden="true">
           {#each Array(4) as _, i (i)}
             <div class="lapse-card lapse-card-skeleton">
@@ -3295,10 +2875,10 @@
           <button
             type="button"
             class="lapse-card lapse-card-none"
-            class:selected={devlogLookoutSessionId === null}
+            class:selected={buildlogLookoutSessionId === null}
             role="radio"
-            aria-checked={devlogLookoutSessionId === null}
-            onclick={() => { devlogLookoutSessionId = null; lookoutPickerOpen = false; }}
+            aria-checked={buildlogLookoutSessionId === null}
+            onclick={() => { buildlogLookoutSessionId = null; lookoutPickerOpen = false; }}
           >
             <div class="lapse-thumb lapse-thumb-none" aria-hidden="true">∅</div>
             <div class="lapse-meta">
@@ -3306,16 +2886,16 @@
               <span class="lapse-sub">Post without a Lookout session</span>
             </div>
           </button>
-          {#each getSelectableDevlogLookoutSessions(devlogLookoutSessions) as session (session.id)}
+          {#each getSelectableBuildlogLookoutSessions(buildlogLookoutSessions) as session (session.id)}
             <button
               type="button"
               class="lapse-card"
-              class:selected={devlogLookoutSessionId === session.id}
+              class:selected={buildlogLookoutSessionId === session.id}
               role="radio"
-              aria-checked={devlogLookoutSessionId === session.id}
-              onclick={() => { devlogLookoutSessionId = session.id; lookoutPickerOpen = false; }}
+              aria-checked={buildlogLookoutSessionId === session.id}
+              onclick={() => { buildlogLookoutSessionId = session.id; lookoutPickerOpen = false; }}
             >
-              {#if devlogLookoutSessionId === session.id}
+              {#if buildlogLookoutSessionId === session.id}
                 <span class="lapse-check" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
@@ -3582,106 +3162,6 @@
     letter-spacing: 0.02em;
   }
 
-  .section-events {
-    margin-bottom: 48px;
-  }
-
-  .section-events .section-copy {
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: clamp(16px, 1.6vw, 20px);
-    letter-spacing: 0.02em;
-    line-height: 1.5;
-    color: var(--color-text);
-  }
-
-  .events-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 20px;
-  }
-
-  .event-card {
-    padding: 24px;
-    border-radius: 24px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.1);
-  }
-
-  .event-card h3 {
-    margin: 0 0 10px;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 1.25rem;
-    letter-spacing: 0.04em;
-    color: var(--color-text);
-  }
-
-  .event-card p {
-    margin: 0 0 12px;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 15px;
-    line-height: 1.45;
-    color: var(--color-text);
-  }
-
-  .event-hosted-by {
-    display: inline-flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
-    width: fit-content;
-    padding: 4px 9px;
-    border: 1px solid rgba(203, 193, 174, 0.18);
-    border-radius: 4px;
-    background: rgba(203, 193, 174, 0.12);
-    color: var(--color-text);
-    font-weight: 700;
-    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.14);
-  }
-
-  .event-hosted-by a {
-    color: var(--color-accent);
-    text-decoration: underline;
-  }
-
-  .event-card-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 16px;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    color: var(--color-text);
-    font-size: 20px;
-    line-height: 1.1;
-    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
-  }
-
-  .event-card-meta time,
-  .event-card-meta span {
-    display: inline-flex;
-    align-items: center;
-    min-height: 32px;
-    padding: 4px 10px;
-    border: 1px solid rgba(230, 244, 254, 0.18);
-    border-radius: 4px;
-    background: rgba(147, 180, 205, 0.16);
-    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.18);
-  }
-
-  .event-location {
-    margin: 0 0 12px;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    color: var(--color-text);
-    font-weight: 600;
-  }
-
-  .event-card a {
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    color: var(--color-accent);
-    text-decoration: underline;
-  }
-
   /* ── bottom row ───────────────────────────────────── */
   .bottom-row {
     display: grid;
@@ -3692,7 +3172,7 @@
   }
 
   .action-log,
-  .news-box {
+  .updates-box {
     display: flex;
     flex-direction: column;
     padding: 24px;
@@ -3704,7 +3184,7 @@
   }
 
   .timeline,
-  .news-list {
+  .updates-list {
     overflow-y: auto;
     min-height: 0;
     flex: 1;
@@ -3713,7 +3193,7 @@
   }
 
   .action-log-title,
-  .news-title {
+  .updates-title {
     margin: 0 0 16px;
     font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
     font-size: clamp(18px, 2vw, 24px);
@@ -3809,36 +3289,11 @@
     color: var(--color-text-faint);
   }
 
-  /* ── news ─────────────────────────────────────────── */
-  .news-list {
+  /* ── fulfillment updates ──────────────────────────── */
+  .updates-list {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-  }
-
-  .news-item {
-    display: flex;
-    gap: 14px;
-    align-items: flex-start;
-  }
-
-  .news-date {
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 14px;
-    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
-    color: var(--color-text);
-    white-space: nowrap;
-    flex-shrink: 0;
-    padding-top: 2px;
-  }
-
-  .news-text {
-    margin: 0;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 17px;
-    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
-    color: var(--color-text);
-    line-height: 1.4;
+    gap: 12px;
   }
 
   /* ── create project form ─────────────────────────── */
@@ -4222,11 +3677,6 @@
     gap: 24px;
     margin-top: 24px;
     max-width: 1500px;
-  }
-
-  .other-program-group {
-    flex: 1;
-    min-width: 0;
   }
 
   .form-actions {
@@ -4958,7 +4408,7 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
-  .devlog-card-lookout {
+  .buildlog-card-lookout {
     margin-top: 0.5rem;
     font-size: 0.85rem;
   }
@@ -4968,7 +4418,7 @@
   .lookout-tracked {
     opacity: 0.65;
   }
-  .devlog-card-lookout video {
+  .buildlog-card-lookout video {
     display: block;
     width: 100%;
     max-height: 320px;
@@ -5132,13 +4582,13 @@
     box-sizing: border-box;
   }
 
-  /* ── Devlogs section ───────────────────────── */
-  .section-devlogs {
+  /* ── Buildlogs section ───────────────────────── */
+  .section-buildlogs {
     background: var(--color-bg-elevated);
     padding-top: 48px;
   }
 
-  .devlogs-blurb {
+  .buildlogs-blurb {
     color: var(--color-text);
     font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
     font-size: 14px;
@@ -5147,7 +4597,7 @@
     opacity: 0.85;
   }
 
-  .devlog-new-btn {
+  .buildlog-new-btn {
     display: inline-block;
     width: 100%;
     max-width: 720px;
@@ -5165,16 +4615,16 @@
     transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s;
   }
 
-  .devlog-new-btn:hover {
+  .buildlog-new-btn:hover {
     background: #aea597;
   }
 
-  .devlog-new-btn:active {
+  .buildlog-new-btn:active {
     transform: translateY(2px);
     box-shadow: 0 1px 0 var(--color-bg);
   }
 
-  .devlog-cancel-btn {
+  .buildlog-cancel-btn {
     display: inline-block;
     margin: 8px 0 18px;
     padding: 6px 14px;
@@ -5188,13 +4638,13 @@
     transition: background 0.15s, border-color 0.15s;
   }
 
-  .devlog-cancel-btn:hover {
+  .buildlog-cancel-btn:hover {
     background: rgba(203, 193, 174, 0.1);
     border-color: var(--color-text);
   }
 
   /* Two-pane create row: form card on the left, separate images card on the right */
-  .devlog-create {
+  .buildlog-create {
     display: flex;
     align-items: flex-start;
     gap: 14px;
@@ -5202,8 +4652,8 @@
     max-width: 720px;
   }
 
-  .devlog-form,
-  .devlog-images-card {
+  .buildlog-form,
+  .buildlog-images-card {
     background: #3a3530;
     border: 2px solid var(--color-bg);
     border-radius: 8px;
@@ -5213,7 +4663,7 @@
       0 8px 20px rgba(0, 0, 0, 0.25);
   }
 
-  .devlog-form {
+  .buildlog-form {
     flex: 1 1 auto;
     min-width: 0;
     display: flex;
@@ -5221,7 +4671,7 @@
     gap: 10px;
   }
 
-  .devlog-images-card {
+  .buildlog-images-card {
     flex: 0 0 auto;
     width: 188px;
     display: flex;
@@ -5229,30 +4679,30 @@
     gap: 8px;
   }
 
-  .devlog-field {
+  .buildlog-field {
     display: flex;
     flex-direction: column;
     gap: 4px;
   }
 
-  .devlog-input,
-  .devlog-textarea,
-  .devlog-select {
+  .buildlog-input,
+  .buildlog-textarea,
+  .buildlog-select {
     width: 100%;
     box-sizing: border-box;
   }
 
-  .devlog-textarea {
+  .buildlog-textarea {
     min-height: 130px;
     resize: vertical;
     line-height: 1.45;
   }
 
-  .devlog-images-label {
+  .buildlog-images-label {
     margin: 0;
   }
 
-  .devlog-images-hint {
+  .buildlog-images-hint {
     margin: 2px 0 0;
     font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
     font-size: 11px;
@@ -5260,7 +4710,7 @@
     line-height: 1.4;
   }
 
-  .devlog-images-grid {
+  .buildlog-images-grid {
     display: grid;
     grid-template-columns: repeat(2, 70px);
     grid-template-rows: repeat(2, 70px);
@@ -5268,19 +4718,19 @@
   }
 
   @media (max-width: 720px) {
-    .devlog-create {
+    .buildlog-create {
       flex-direction: column;
     }
-    .devlog-images-card {
+    .buildlog-images-card {
       width: 100%;
     }
-    .devlog-images-grid {
+    .buildlog-images-grid {
       grid-template-columns: repeat(4, 70px);
       grid-template-rows: 70px;
     }
   }
 
-  .devlog-image-empty {
+  .buildlog-image-empty {
     width: 70px;
     height: 70px;
     border-radius: 6px;
@@ -5288,7 +4738,7 @@
     background: rgba(0, 0, 0, 0.15);
   }
 
-  .devlog-image-add {
+  .buildlog-image-add {
     width: 70px;
     height: 70px;
     border-radius: 6px;
@@ -5302,17 +4752,17 @@
     transition: background 0.15s, border-color 0.15s;
   }
 
-  .devlog-image-add:hover {
+  .buildlog-image-add:hover {
     background: rgba(154, 146, 133, 0.22);
     border-color: #9a9285;
   }
 
-  .devlog-image-add svg {
+  .buildlog-image-add svg {
     width: 22px;
     height: 22px;
   }
 
-  .devlog-image-thumb {
+  .buildlog-image-thumb {
     position: relative;
     width: 70px;
     height: 70px;
@@ -5322,14 +4772,14 @@
     background: #2a2620;
   }
 
-  .devlog-image-thumb img {
+  .buildlog-image-thumb img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
   }
 
-  .devlog-image-remove {
+  .buildlog-image-remove {
     position: absolute;
     top: 2px;
     right: 2px;
@@ -5346,7 +4796,7 @@
     padding: 0;
   }
 
-  .devlog-submit {
+  .buildlog-submit {
     display: inline-block;
     margin-top: 14px;
     padding: 10px 22px;
@@ -5361,35 +4811,35 @@
     transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.15s;
   }
 
-  .devlog-submit:hover:not(:disabled) {
+  .buildlog-submit:hover:not(:disabled) {
     background: #aea597;
   }
 
-  .devlog-submit:active:not(:disabled) {
+  .buildlog-submit:active:not(:disabled) {
     transform: translateY(2px);
     box-shadow: 0 1px 0 var(--color-bg);
   }
 
-  .devlog-submit:disabled {
+  .buildlog-submit:disabled {
     opacity: 0.45;
     cursor: not-allowed;
   }
 
-  .devlogs-list {
+  .buildlogs-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
     max-width: 720px;
   }
 
-  .devlog-empty {
+  .buildlog-empty {
     color: var(--color-text);
     opacity: 0.7;
     font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
     font-size: 14px;
   }
 
-  .devlog-card {
+  .buildlog-card {
     background: #3a3530;
     border: 2px solid var(--color-bg);
     border-left: 4px solid #9a9285;
@@ -5400,7 +4850,7 @@
       0 6px 14px rgba(0, 0, 0, 0.18);
   }
 
-  .devlog-card-header {
+  .buildlog-card-header {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -5410,7 +4860,7 @@
     color: var(--color-text);
   }
 
-  .devlog-card-project {
+  .buildlog-card-project {
     background: rgba(154, 146, 133, 0.22);
     color: #d6cfc1;
     border: 1px solid #9a9285;
@@ -5421,12 +4871,12 @@
     letter-spacing: 0.02em;
   }
 
-  .devlog-card-time {
+  .buildlog-card-time {
     color: var(--color-text-faint);
     margin-left: auto;
   }
 
-  .devlog-card-delete {
+  .buildlog-card-delete {
     background: transparent;
     border: 0;
     color: var(--color-text-faint);
@@ -5437,11 +4887,11 @@
     transition: color 0.15s;
   }
 
-  .devlog-card-delete:hover {
+  .buildlog-card-delete:hover {
     color: var(--color-danger);
   }
 
-  .devlog-card-title {
+  .buildlog-card-title {
     margin: 0 0 6px;
     font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
     font-size: 18px;
@@ -5451,7 +4901,7 @@
     text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
   }
 
-  .devlog-card-text {
+  .buildlog-card-text {
     margin: 0;
     color: var(--color-text);
     font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
@@ -5461,14 +4911,14 @@
     word-break: break-word;
   }
 
-  .devlog-card-images {
+  .buildlog-card-images {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     margin-top: 12px;
   }
 
-  .devlog-card-image-btn {
+  .buildlog-card-image-btn {
     padding: 0;
     border: 0;
     background: transparent;
@@ -5476,7 +4926,7 @@
     line-height: 0;
   }
 
-  .devlog-card-images img {
+  .buildlog-card-images img {
     width: 110px;
     height: 110px;
     object-fit: cover;
@@ -5486,12 +4936,12 @@
     transition: transform 0.15s ease;
   }
 
-  .devlog-card-image-btn:hover img {
+  .buildlog-card-image-btn:hover img {
     transform: scale(1.04);
   }
 
   /* Lightbox */
-  .devlog-lightbox {
+  .buildlog-lightbox {
     position: fixed;
     inset: 0;
     z-index: 9999;
@@ -5504,7 +4954,7 @@
     backdrop-filter: blur(4px);
   }
 
-  .devlog-lightbox img {
+  .buildlog-lightbox img {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
@@ -5513,7 +4963,7 @@
     cursor: default;
   }
 
-  .devlog-lightbox-close {
+  .buildlog-lightbox-close {
     position: absolute;
     top: 18px;
     right: 22px;
@@ -5530,7 +4980,7 @@
     padding: 0;
   }
 
-  .devlog-lightbox-close:hover {
+  .buildlog-lightbox-close:hover {
     background: rgba(0, 0, 0, 0.75);
   }
 
@@ -5601,6 +5051,7 @@
     font-size: 14px;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+    text-decoration: none;
     cursor: pointer;
     transition: background 0.15s, transform 0.1s;
     box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4);
@@ -5617,30 +5068,6 @@
   .suggestions-icon {
     width: 18px;
     height: 18px;
-  }
-
-  .suggestions-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.65);
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-  }
-
-  .suggestions-modal {
-    background: var(--color-text);
-    border: 2px solid #1a1a1a;
-    box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.4);
-    width: 100%;
-    max-width: 600px;
-    max-height: 85vh;
-    overflow-y: auto;
-    padding: 28px 28px 24px;
-    position: relative;
-    color: var(--color-bg);
   }
 
   .order-note-overlay {
@@ -5721,180 +5148,6 @@
     opacity: 0.5;
     cursor: default;
   }
-
-  .suggestions-close {
-    position: absolute;
-    top: 12px;
-    right: 14px;
-    background: transparent;
-    border: none;
-    font-size: 28px;
-    line-height: 1;
-    color: var(--color-bg);
-    cursor: pointer;
-    padding: 4px 8px;
-  }
-  .suggestions-close:hover { color: var(--color-danger); }
-
-  .suggestions-title {
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 28px;
-    margin: 0 0 4px;
-    color: var(--color-bg);
-  }
-  .suggestions-subtitle {
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 14px;
-    color: var(--color-border);
-    margin: 0 0 20px;
-  }
-
-  .suggestions-new {
-    background: rgba(240, 235, 229, 0.5);
-    border: 2px solid var(--color-bg);
-    padding: 12px;
-    margin-bottom: 20px;
-  }
-  .suggestions-input {
-    width: 100%;
-    min-height: 60px;
-    background: var(--color-text);
-    border: 2px solid var(--color-bg);
-    padding: 8px 10px;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 14px;
-    color: var(--color-bg);
-    resize: vertical;
-    box-sizing: border-box;
-  }
-  .suggestions-input:focus {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 1px;
-  }
-  .suggestions-new-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 8px;
-  }
-  .suggestions-counter {
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 11px;
-    color: var(--color-border);
-  }
-  .suggestions-submit {
-    background: var(--color-success);
-    color: #fff;
-    border: 2px solid #1a1a1a;
-    padding: 8px 18px;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 13px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    cursor: pointer;
-    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
-  }
-  .suggestions-submit:hover:not(:disabled) {
-    background: #6cb482;
-  }
-  .suggestions-submit:disabled {
-    background: var(--color-text-faint);
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-  .suggestions-error {
-    color: #8a4a49;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 13px;
-    margin: 8px 0 0;
-  }
-
-  .suggestions-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .suggestions-empty {
-    text-align: center;
-    color: var(--color-border);
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    padding: 24px 0;
-  }
-
-  .suggestion-row {
-    display: flex;
-    align-items: stretch;
-    gap: 12px;
-    background: rgba(240, 235, 229, 0.55);
-    border: 2px solid var(--color-border);
-    padding: 10px 12px;
-  }
-
-  .suggestion-vote {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    min-width: 56px;
-    background: var(--color-text);
-    border: 2px solid var(--color-border);
-    color: var(--color-bg);
-    padding: 6px 8px;
-    cursor: pointer;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
-  }
-  .suggestion-vote svg { width: 16px; height: 16px; }
-  .suggestion-vote-count { font-size: 16px; line-height: 1; }
-  .suggestion-vote:hover {
-    background: var(--color-text);
-    border-color: var(--color-bg);
-  }
-  .suggestion-vote.voted {
-    background: var(--color-success);
-    border-color: #1a1a1a;
-    color: #fff;
-  }
-  .suggestion-vote.voted:hover {
-    background: #6cb482;
-  }
-
-  .suggestion-body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 4px;
-    min-width: 0;
-  }
-  .suggestion-text {
-    margin: 0;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 14px;
-    color: var(--color-bg);
-    word-break: break-word;
-  }
-  .suggestion-meta {
-    margin: 0;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 12px;
-    color: var(--color-border);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .suggestion-delete {
-    background: transparent;
-    border: none;
-    color: #8a4a49;
-    cursor: pointer;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 12px;
-    text-decoration: underline;
-    padding: 0;
-  }
-  .suggestion-delete:hover { color: #a05c5b; }
 
   @media (max-width: 480px) {
     .shop-header-actions {
@@ -6710,7 +5963,7 @@
   }
 
   /* ── projects ────────────────────────────────────── */
-  .section-projects {
+  .section-dashboard {
     background: var(--color-bg-elevated);
     padding-top: 48px;
   }
@@ -7859,136 +7112,6 @@
     word-break: break-word;
   }
 
-  /* ── leaderboard ─────────────────────────────────── */
-  .section-leaderboard {
-    background: var(--color-bg-elevated);
-  }
-
-  .leaderboard-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 24px;
-  }
-
-  .lb-total-users {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    flex-shrink: 0;
-  }
-
-  .lb-total-label {
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 13px;
-    color: var(--color-text);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-
-  .lb-total-value {
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: clamp(28px, 3vw, 40px);
-    color: var(--color-text);
-    letter-spacing: 0.04em;
-  }
-
-  .leaderboard-table {
-    display: flex;
-    flex-direction: column;
-    max-width: 600px;
-  }
-
-  .leaderboard-header {
-    display: flex;
-    align-items: center;
-    padding: 10px 16px;
-    border-bottom: 2px solid rgba(230, 244, 254, 0.15);
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 16px;
-    color: var(--color-text-faint);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  .leaderboard-row {
-    display: flex;
-    align-items: center;
-    padding: 14px 16px;
-    border-bottom: 1px solid rgba(230, 244, 254, 0.06);
-  }
-
-  .leaderboard-row.top-three .lb-rank {
-    color: var(--color-danger);
-    font-weight: 700;
-  }
-
-  .lb-rank {
-    width: 40px;
-    flex-shrink: 0;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 18px;
-    color: var(--color-text);
-  }
-
-  .lb-name {
-    flex: 1;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 15px;
-    color: var(--color-text);
-  }
-
-  .lb-hours {
-    width: 60px;
-    text-align: right;
-    flex-shrink: 0;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 18px;
-    color: var(--color-text);
-  }
-
-  .lb-show-more {
-    margin-top: 12px;
-    padding: 10px 24px;
-    background: transparent;
-    border: 2px solid rgba(230, 244, 254, 0.2);
-    border-bottom: 5px solid rgba(230, 244, 254, 0.1);
-    color: var(--color-text);
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    cursor: pointer;
-    width: 100%;
-    max-width: 600px;
-    transition: background 150ms ease, border-color 150ms ease, transform 0.1s ease, border-bottom-width 0.1s ease;
-  }
-
-  .lb-show-more:hover {
-    background: rgba(230, 244, 254, 0.06);
-    border-color: rgba(230, 244, 254, 0.35);
-  }
-
-  .lb-show-more:active {
-    transform: translateY(3px);
-    border-bottom-width: 2px;
-  }
-
-  .skeleton-text {
-    display: inline-block;
-    height: 14px;
-    width: 60%;
-    background: rgba(230, 244, 254, 0.08);
-    border-radius: 2px;
-  }
-
-  .skeleton-text.short {
-    width: 30px;
-    margin-left: auto;
-  }
-
   .coming-soon {
     margin: 0;
     font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
@@ -7997,113 +7120,6 @@
     letter-spacing: 0.06em;
     text-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
     text-transform: uppercase;
-  }
-
-  /* ── faq ─────────────────────────────────────────── */
-  .section-faq {
-    background: var(--color-bg-elevated);
-    padding: 0;
-  }
-
-  .faq-page {
-    background: var(--color-bg-elevated);
-    min-height: 100%;
-    padding: 2rem 3rem;
-    position: relative;
-    overflow-x: hidden;
-  }
-
-  .faq-page > * {
-    position: relative;
-    z-index: 1;
-  }
-
-  .faq-title {
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    color: var(--color-text);
-    font-size: 3rem;
-    text-align: center;
-    margin: 0 0 1rem;
-  }
-
-  .faq-intro {
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    color: var(--color-text);
-    text-align: center;
-    max-width: 600px;
-    margin: 0 auto 2.5rem;
-    font-size: 1.05rem;
-    line-height: 1.6;
-    opacity: 0.85;
-  }
-
-  .faq-list {
-    max-width: 600px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .faq-item {
-    background: var(--color-bg-elevated-2);
-    border: 2px solid var(--color-bg-elevated);
-    border-radius: 8px;
-    padding: 0;
-    cursor: pointer;
-    text-align: left;
-    width: 100%;
-    font-family: inherit;
-    color: inherit;
-    transition: background 0.2s, box-shadow 0.2s;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.25);
-  }
-
-  .faq-item:hover {
-    background: color-mix(in srgb, var(--color-bg-elevated-2) 85%, white);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35), 0 12px 28px rgba(0, 0, 0, 0.3);
-  }
-
-  .faq-item.open {
-    background: var(--color-bg-elevated-2);
-    border-color: var(--color-text);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 16px 36px rgba(0, 0, 0, 0.3);
-  }
-
-  .faq-question {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.25rem;
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 1.2rem;
-    color: var(--color-text);
-    gap: 1rem;
-  }
-
-  .faq-icon {
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 1.5rem;
-    color: var(--color-text);
-    flex-shrink: 0;
-    transition: transform 0.25s ease;
-    line-height: 1;
-  }
-
-  .faq-icon.rotated {
-    transform: rotate(45deg);
-  }
-
-  .faq-answer {
-    padding: 0 1.25rem 1rem;
-  }
-
-  .faq-answer p {
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    color: var(--color-text);
-    font-size: 0.9rem;
-    line-height: 1.7;
-    margin: 0;
   }
 
   /* ── settings ────────────────────────────────────── */
@@ -8202,32 +7218,6 @@
   }
 
   .nickname-save:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-
-  .gender-select {
-    font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 15px;
-    color: var(--color-text);
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(203, 193, 174, 0.3);
-    padding: 4px 8px;
-    text-align: right;
-    cursor: pointer;
-  }
-
-  .gender-select option {
-    color: #000;
-    background: var(--color-text);
-  }
-
-  .gender-select:focus {
-    outline: none;
-    border-color: var(--color-accent);
-  }
-
-  .gender-select:disabled {
     opacity: 0.5;
     cursor: default;
   }
@@ -8361,25 +7351,11 @@
     min-width: 0;
   }
 
-  .fulfillment-card {
-    max-width: none;
-    position: sticky;
-    top: 24px;
-  }
-
   .fulfillment-empty {
     font-family: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
     font-size: 15px;
     color: var(--color-text-faint);
     margin: 0;
-  }
-
-  .fulfillment-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    max-height: 600px;
-    overflow-y: auto;
   }
 
   .fulfillment-item {
@@ -8578,31 +7554,6 @@
       padding: 40px 20px 48px;
     }
 
-    .faq-title {
-      font-size: 2rem;
-    }
-
-    .faq-intro {
-      font-size: 0.95rem;
-    }
-
-    .faq-page {
-      padding: 2.5rem 1rem;
-    }
-
-    .faq-question {
-      font-size: 1rem;
-      padding: 0.85rem 1rem;
-    }
-
-    .faq-answer {
-      padding: 0 1rem 0.85rem;
-    }
-
-    .faq-item {
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), 0 4px 10px rgba(0, 0, 0, 0.2);
-    }
-
     .shop-container {
       padding: 16px;
     }
@@ -8724,11 +7675,6 @@
       flex-wrap: wrap;
     }
 
-    /* Leaderboard: trim columns so rows don't overflow */
-    .leaderboard-table {
-      font-size: 14px;
-    }
-
     /* Project actions row should wrap rather than overflow */
     .project-actions-row {
       flex-wrap: wrap;
@@ -8750,10 +7696,6 @@
     .me-columns {
       flex-direction: column;
       gap: 24px;
-    }
-
-    .fulfillment-card {
-      position: static;
     }
 
     .account-card {

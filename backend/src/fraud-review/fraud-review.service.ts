@@ -9,7 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { Project } from '../entities/project.entity';
 import { User } from '../entities/user.entity';
-import { Devlog } from '../entities/devlog.entity';
+import { Buildlog } from '../entities/buildlog.entity';
 import { FraudReview } from '../entities/fraud-review.entity';
 import { ProjectReview } from '../entities/project-review.entity';
 import { Submission } from '../entities/submission.entity';
@@ -67,7 +67,7 @@ export class FraudReviewService implements OnApplicationBootstrap, OnApplication
     private readonly config: ConfigService,
     @InjectRepository(Project) private readonly projectRepo: Repository<Project>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
-    @InjectRepository(Devlog) private readonly devlogRepo: Repository<Devlog>,
+    @InjectRepository(Buildlog) private readonly buildlogRepo: Repository<Buildlog>,
     @InjectRepository(FraudReview) private readonly fraudRepo: Repository<FraudReview>,
     @InjectRepository(ProjectReview) private readonly reviewRepo: Repository<ProjectReview>,
     @InjectRepository(Submission) private readonly submissionRepo: Repository<Submission>,
@@ -459,16 +459,16 @@ export class FraudReviewService implements OnApplicationBootstrap, OnApplication
   }
 
   /**
-   * Sum of approved devlog hours across the user's "earned" projects (approved,
+   * Sum of approved buildlog hours across the user's "earned" projects (approved,
    * or already partially paid out) — the same project set the pipe reconcile
    * counts override_hours over. Kept as a separate aggregate (not a JOIN into
-   * the override_hours SUM) so devlog rows can't fan out and inflate the
+   * the override_hours SUM) so buildlog rows can't fan out and inflate the
    * project-hours total.
    */
-  private async approvedDevlogHoursForUser(userId: string): Promise<number> {
+  private async approvedBuildlogHoursForUser(userId: string): Promise<number> {
     const rows: Array<{ h: string }> = await this.projectRepo.manager.query(
       `SELECT COALESCE(SUM(d.approved_hours), 0) AS h
-         FROM devlogs d
+         FROM buildlogs d
          JOIN projects p ON p.id = d.project_id
         WHERE p.user_id = $1
           AND d.approved = true
@@ -504,7 +504,7 @@ export class FraudReviewService implements OnApplicationBootstrap, OnApplication
     // 3. Grant pipes — same delta logic as AdminService.reviewProject. Target =
     //    floor(earned hours across the user's earned projects), delta =
     //    target − sum(pipes_granted) across all the user's projects. Earned
-    //    hours = project override_hours PLUS approved devlog hours: devlog hours
+    //    hours = project override_hours PLUS approved buildlog hours: buildlog hours
     //    count exactly like normal hours, and (like all hours) they only mint
     //    pipes here, at fraud review.
     if ((project.overrideHours ?? 0) > 0) {
@@ -517,8 +517,8 @@ export class FraudReviewService implements OnApplicationBootstrap, OnApplication
           `(p.status = 'approved' OR (p.status <> 'approved' AND p.pipes_granted > 0))`,
         )
         .getRawOne<{ earnedHours: string; granted: string }>();
-      const devlogHours = await this.approvedDevlogHoursForUser(project.userId);
-      const target = Math.floor(Number(totals?.earnedHours ?? 0) + devlogHours);
+      const buildlogHours = await this.approvedBuildlogHoursForUser(project.userId);
+      const target = Math.floor(Number(totals?.earnedHours ?? 0) + buildlogHours);
       const previouslyGranted = Number(totals?.granted ?? 0);
       const delta = target - previouslyGranted;
       if (delta > 0) {
@@ -650,28 +650,28 @@ export class FraudReviewService implements OnApplicationBootstrap, OnApplication
   private async buildHardwareJournal(
     project: Project,
   ): Promise<HardwareJournalEntry[]> {
-    const devlogs = await this.devlogRepo.find({
+    const buildlogs = await this.buildlogRepo.find({
       where: { projectId: project.id },
       order: { createdAt: 'ASC' },
     });
-    if (devlogs.length === 0) return [];
+    if (buildlogs.length === 0) return [];
 
-    // Bucket devlogs by UTC date so we can spread that day's Hackatime hours
+    // Bucket buildlogs by UTC date so we can spread that day's Hackatime hours
     // across the entries written on the same day.
-    const devlogsByDay = new Map<string, Devlog[]>();
-    for (const d of devlogs) {
+    const buildlogsByDay = new Map<string, Buildlog[]>();
+    for (const d of buildlogs) {
       const day = d.createdAt.toISOString().slice(0, 10);
-      const bucket = devlogsByDay.get(day) ?? [];
+      const bucket = buildlogsByDay.get(day) ?? [];
       bucket.push(d);
-      devlogsByDay.set(day, bucket);
+      buildlogsByDay.set(day, bucket);
     }
 
     const hoursByDay = await this.hoursPerDayFromHackatime(project);
 
-    return devlogs.map((d) => {
+    return buildlogs.map((d) => {
       const day = d.createdAt.toISOString().slice(0, 10);
       const dayHours = hoursByDay.get(day) ?? 0;
-      const sameDayCount = devlogsByDay.get(day)?.length ?? 1;
+      const sameDayCount = buildlogsByDay.get(day)?.length ?? 1;
       const hours = sameDayCount > 0 ? dayHours / sameDayCount : 0;
 
       return {
@@ -699,7 +699,7 @@ export class FraudReviewService implements OnApplicationBootstrap, OnApplication
     if (!htUserId) return out;
 
     // Fetch a wide window — start_date is bounded by the project's earliest
-    // devlog (or createdAt), end_date is today + 1 day.
+    // buildlog (or createdAt), end_date is today + 1 day.
     const startMs = Math.min(
       project.createdAt?.getTime() ?? Date.now(),
       Date.now(),

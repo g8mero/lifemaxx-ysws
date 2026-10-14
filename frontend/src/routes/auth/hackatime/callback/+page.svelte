@@ -5,7 +5,7 @@
 {#if data.error}
   <div class="callback-error">
     <p>{data.error}</p>
-    <a href="/tutorial">Back to tutorial</a>
+    <a href="/dashboard">Back to dashboard</a>
   </div>
 {:else}
   <p>Connecting Hackatime…</p>

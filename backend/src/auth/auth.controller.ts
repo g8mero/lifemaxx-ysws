@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
-import { AuthService, ALLOWED_GENDERS, type Gender } from './auth.service';
+import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RsvpService } from '../rsvp/rsvp.service';
 import { IdentityService } from '../identity/identity.service';
@@ -187,22 +187,6 @@ export class AuthController {
       throw new BadRequestException('Nickname must be 1–50 characters');
     }
     return this.authService.updateNickname(uid, nickname);
-  }
-
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @UseGuards(JwtAuthGuard)
-  @Patch('gender')
-  async updateGender(
-    @Req() req: Request,
-    @Body() body: { gender?: string },
-  ) {
-    const uid = (req as any).user?.uid;
-    if (!uid) throw new UnauthorizedException();
-    const gender = body.gender;
-    if (!gender || !ALLOWED_GENDERS.includes(gender as Gender)) {
-      throw new BadRequestException('Invalid gender value');
-    }
-    return this.authService.updateGender(uid, gender as Gender);
   }
 
   @UseGuards(JwtAuthGuard)

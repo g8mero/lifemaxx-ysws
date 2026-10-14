@@ -128,7 +128,7 @@ export class LookoutService {
     async pruneStaleUnattached(maxAgems = 7 * 24 * 60 * 60 * 1000): Promise<number> {
         const cutoff = new Date(Date.now() - maxAgems);
         const res = await this.sessionRepo.delete({
-            devlogId: IsNull(),
+            buildlogId: IsNull(),
             createdAt: LessThan(cutoff),
         });
         return res.affected ?? 0;
@@ -143,7 +143,7 @@ export class LookoutService {
 
     /**
      * Persist a freshly created session row owned by `userId` against `projectId`.
-     * Returned id lets the devlog form attach it on submit.
+     * Returned id lets the buildlog form attach it on submit.
      */
     async saveSession(
         userId: string,
@@ -160,14 +160,14 @@ export class LookoutService {
         );
     }
 
-    /** The user's not-yet-attached sessions for a project (devlog-form picker). */
+    /** The user's not-yet-attached sessions for a project (buildlog-form picker). */
     async listUnattached(
         projectId: string,
         userId: string,
     ): Promise<LookoutSessionDTO[]> {
         void this.pruneStaleUnattached().catch(() => {});
         const rows = await this.sessionRepo.find({
-            where: { projectId, userId, devlogId: IsNull() },
+            where: { projectId, userId, buildlogId: IsNull() },
             order: { createdAt: 'DESC' },
         });
         return this.listForReview(rows);
@@ -196,42 +196,42 @@ export class LookoutService {
     }
 
     /**
-     * Link an unattached session to a devlog (one session per devlog). Verifies
+     * Link an unattached session to a buildlog (one session per buildlog). Verifies
      * ownership and that the session belongs to the same project and is free.
      */
-    async attachToDevlog(
+    async attachToBuildlog(
         sessionId: string,
         userId: string,
         projectId: string,
-        devlogId: string,
+        buildlogId: string,
     ): Promise<void> {
         const session = await this.sessionRepo.findOne({ where: { id: sessionId } });
         if (!session || session.userId !== userId || session.projectId !== projectId) {
             throw new BadRequestException('Timelapse session not found');
         }
-        if (session.devlogId) {
-            throw new BadRequestException('Timelapse is already attached to a devlog');
+        if (session.buildlogId) {
+            throw new BadRequestException('Timelapse is already attached to a buildlog');
         }
-        session.devlogId = devlogId;
+        session.buildlogId = buildlogId;
         await this.sessionRepo.save(session);
     }
 
     /**
-     * Resolve the attached session for each devlog id. Devlogs without a session
-     * never hit the Lookout API. Keyed by `devlogId`.
+     * Resolve the attached session for each buildlog id. Buildlogs without a session
+     * never hit the Lookout API. Keyed by `buildlogId`.
      */
-    async findForDevlogs(
-        devlogIds: string[],
+    async findForBuildlogs(
+        buildlogIds: string[],
     ): Promise<Map<string, LookoutSessionDTO>> {
         const out = new Map<string, LookoutSessionDTO>();
-        if (!this.configured || devlogIds.length === 0) return out;
+        if (!this.configured || buildlogIds.length === 0) return out;
         const rows = await this.sessionRepo.find({
-            where: { devlogId: In(devlogIds) },
+            where: { buildlogId: In(buildlogIds) },
         });
         await Promise.all(
             rows.map(async (row) => {
                 const dto = await this.getSessionInfo(row);
-                if (dto && row.devlogId) out.set(row.devlogId, dto);
+                if (dto && row.buildlogId) out.set(row.buildlogId, dto);
             }),
         );
         return out;

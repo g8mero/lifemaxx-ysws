@@ -341,7 +341,6 @@ export class AuditService {
       hackatimeProjectNames: parseHackatimeNames(project.hackatimeProjectName),
       aiUse: project.aiUse,
       isUpdate: project.isUpdate,
-      otherHcProgram: project.otherHcProgram,
       overrideHours: project.overrideHours ?? 0,
       internalHours: project.internalHours ?? 0,
       pipesGranted: project.pipesGranted ?? 0,
@@ -566,7 +565,7 @@ export class AuditService {
     }
 
     // Grant pipes — delta logic identical to the fraud poller path. Earned
-    // hours = project override_hours PLUS approved devlog hours (devlog hours
+    // hours = project override_hours PLUS approved buildlog hours (buildlog hours
     // count like normal hours and, like all hours, only mint pipes here at
     // fraud review).
     if ((project.overrideHours ?? 0) > 0) {
@@ -579,17 +578,17 @@ export class AuditService {
           `(p.status = 'approved' OR (p.status <> 'approved' AND p.pipes_granted > 0))`,
         )
         .getRawOne<{ earnedHours: string; granted: string }>();
-      const devlogRows: Array<{ h: string }> = await this.projectRepo.manager.query(
+      const buildlogRows: Array<{ h: string }> = await this.projectRepo.manager.query(
         `SELECT COALESCE(SUM(d.approved_hours), 0) AS h
-           FROM devlogs d
+           FROM buildlogs d
            JOIN projects p ON p.id = d.project_id
           WHERE p.user_id = $1
             AND d.approved = true
             AND (p.status = 'approved' OR (p.status <> 'approved' AND p.pipes_granted > 0))`,
         [project.userId],
       );
-      const devlogHours = Number(devlogRows?.[0]?.h ?? 0);
-      const target = Math.floor(Number(totals?.earnedHours ?? 0) + devlogHours);
+      const buildlogHours = Number(buildlogRows?.[0]?.h ?? 0);
+      const target = Math.floor(Number(totals?.earnedHours ?? 0) + buildlogHours);
       const previouslyGranted = Number(totals?.granted ?? 0);
       const delta = target - previouslyGranted;
       if (delta > 0) {

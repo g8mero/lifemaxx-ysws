@@ -11,7 +11,7 @@ import { AuditLogModule } from './audit-log/audit-log.module';
 import { AdminModule } from './admin/admin.module';
 import { NewsModule } from './news/news.module';
 import { ShopModule } from './shop/shop.module';
-import { DevlogsModule } from './devlogs/devlogs.module';
+import { BuildlogsModule } from './buildlogs/buildlogs.module';
 import { FraudReviewModule } from './fraud-review/fraud-review.module';
 import { BotReviewModule } from './bot-review/bot-review.module';
 import { LapseModule } from './lapse/lapse.module';
@@ -32,9 +32,7 @@ import { ShopItem } from './entities/shop-item.entity';
 import { Order } from './entities/order.entity';
 import { FulfillmentUpdate } from './entities/fulfillment-update.entity';
 import { Submission } from './entities/submission.entity';
-import { ShopSuggestion } from './entities/shop-suggestion.entity';
-import { ShopSuggestionVote } from './entities/shop-suggestion-vote.entity';
-import { Devlog } from './entities/devlog.entity';
+import { Buildlog } from './entities/buildlog.entity';
 import { Event } from './entities/event.entity';
 import { FraudReview } from './entities/fraud-review.entity';
 import { HcbCredential } from './entities/hcb-credential.entity';
@@ -56,7 +54,7 @@ import { ALL_MIGRATIONS } from './migrations';
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
         url: config.getOrThrow('DATABASE_URL'),
-        entities: [User, Session, Project, AuditLog, NewsItem, ProjectReview, Comment, ShopItem, Order, FulfillmentUpdate, Submission, ShopSuggestion, ShopSuggestionVote, Devlog, Event, FraudReview, HcbCredential, LookoutSession, AppSetting, BotReviewDraft],
+        entities: [User, Session, Project, AuditLog, NewsItem, ProjectReview, Comment, ShopItem, Order, FulfillmentUpdate, Submission, Buildlog, Event, FraudReview, HcbCredential, LookoutSession, AppSetting, BotReviewDraft],
         migrations: ALL_MIGRATIONS,
         migrationsRun: true,
         synchronize: false,
@@ -71,7 +69,7 @@ import { ALL_MIGRATIONS } from './migrations';
     AdminModule,
     NewsModule,
     ShopModule,
-    DevlogsModule,
+    BuildlogsModule,
     FraudReviewModule,
     BotReviewModule,
     LapseModule,

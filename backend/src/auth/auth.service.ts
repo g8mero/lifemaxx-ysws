@@ -11,21 +11,10 @@ import { User } from '../entities/user.entity';
 import { Session } from '../entities/session.entity';
 import { YswsConfigService } from '../ysws-config/ysws-config.service';
 
-const ALLOWED_REDIRECTS = new Set(['/home', '/tutorial']);
-
 const EMAIL_RE =
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
 const REFRESH_TOKEN_EXPIRY_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
-
-export const ALLOWED_GENDERS = [
-  'male',
-  'female',
-  'non_binary_other',
-  'not_sure',
-  'prefer_not_to_say',
-] as const;
-export type Gender = (typeof ALLOWED_GENDERS)[number];
 
 @Injectable()
 export class AuthService {
@@ -209,18 +198,13 @@ export class AuthService {
     }
 
     // 5. Submit RSVP
-    let redirectTo = '/home';
+    const redirectTo = '/home';
     try {
-      const rsvpResult = await this.rsvpService.createRsvp(userinfo.email);
-      redirectTo = rsvpResult.existing ? '/home' : '/tutorial';
+      await this.rsvpService.createRsvp(userinfo.email);
     } catch (err) {
       this.logger.error(
         `RSVP submission failed for user ${userinfo.sub}: ${err}`,
       );
-    }
-
-    if (!ALLOWED_REDIRECTS.has(redirectTo)) {
-      redirectTo = '/home';
     }
 
     // 6. Create session with refresh token
@@ -236,7 +220,6 @@ export class AuthService {
       slack_id: userinfo.slack_id,
       has_address: user.hasAddress,
       has_birthdate: user.hasBirthdate,
-      gender: user.gender,
     });
 
     return { token, refreshToken, redirectTo };
@@ -300,7 +283,6 @@ export class AuthService {
       slack_id: user.slackId,
       has_address: user.hasAddress,
       has_birthdate: user.hasBirthdate,
-      gender: user.gender,
     });
 
     return { token, refreshToken };
@@ -340,7 +322,6 @@ export class AuthService {
       slack_id: user.slackId,
       has_address: user.hasAddress,
       has_birthdate: user.hasBirthdate,
-      gender: user.gender,
       impersonator_uid: adminUid,
       impersonator_name: adminName,
     });
@@ -367,32 +348,6 @@ export class AuthService {
       slack_id: user.slackId,
       has_address: user.hasAddress,
       has_birthdate: user.hasBirthdate,
-      gender: user.gender,
-    });
-
-    return { token };
-  }
-
-  async updateGender(
-    userId: string,
-    gender: Gender,
-  ): Promise<{ token: string }> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) throw new Error('User not found');
-
-    user.gender = gender;
-    await this.userRepo.save(user);
-
-    const token = this.jwtService.sign({
-      sub: user.hcaSub,
-      uid: user.id,
-      email: user.email,
-      name: user.name,
-      nickname: user.nickname,
-      slack_id: user.slackId,
-      has_address: user.hasAddress,
-      has_birthdate: user.hasBirthdate,
-      gender: user.gender,
     });
 
     return { token };

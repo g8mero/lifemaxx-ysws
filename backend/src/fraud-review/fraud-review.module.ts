@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Project } from '../entities/project.entity';
 import { User } from '../entities/user.entity';
-import { Devlog } from '../entities/devlog.entity';
+import { Buildlog } from '../entities/buildlog.entity';
 import { FraudReview } from '../entities/fraud-review.entity';
 import { ProjectReview } from '../entities/project-review.entity';
 import { Submission } from '../entities/submission.entity';
@@ -15,7 +15,7 @@ import { FraudReviewService } from './fraud-review.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Project, User, Devlog, FraudReview, ProjectReview, Submission]),
+    TypeOrmModule.forFeature([Project, User, Buildlog, FraudReview, ProjectReview, Submission]),
     AuditLogModule,
     ProjectAirtableSyncModule,
     RsvpModule,

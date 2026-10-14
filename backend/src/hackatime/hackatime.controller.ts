@@ -71,8 +71,8 @@ export class HackatimeController {
   }
 
   /**
-   * Returns the authenticated user's Hackatime project names.
-   * Only project name strings are returned — no other Hackatime data.
+   * Returns the authenticated user's Hackatime project names, plus whether
+   * they've linked Hackatime and their own Hackatime user ID.
    */
   @Throttle({ default: { limit: 15, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
@@ -81,7 +81,10 @@ export class HackatimeController {
     const userId = (req as any).user?.sub;
     if (!userId) throw new UnauthorizedException('No user identity');
 
-    const names = await this.hackatimeService.getProjectNames(userId);
-    return { projects: names };
+    const [names, connection] = await Promise.all([
+      this.hackatimeService.getProjectNames(userId),
+      this.hackatimeService.getConnection(userId),
+    ]);
+    return { projects: names, ...connection };
   }
 }

@@ -8,7 +8,6 @@ export class UpdateProjectDto {
   screenshots?: string[];
   hackatimeProjectName?: string[] | null;
   isUpdate?: boolean;
-  otherHcProgram?: string | null;
   aiUse?: string | null;
   status?: string;
   reviewerNote?: string | null;
