@@ -411,6 +411,7 @@
   const BUILDLOG_MAX_IMAGES = 4;
   let buildlogImageCount = $derived(buildlogPreviews.filter(Boolean).length);
   let nicknameInput = $state(data.user.nickname ?? '');
+  let savedNickname = $state(data.user.nickname ?? '');
   let nicknameSaving = $state(false);
   let canSubmit = $derived(projectName.trim() !== '' && projectDesc.trim() !== '' && projectType !== '' && !submitting);
   let hasScreenshots = $derived(screenshotPreviews[0] !== '' || screenshotPreviews[1] !== '');
@@ -1362,7 +1363,7 @@
 
   async function saveNickname() {
     const val = nicknameInput.trim();
-    if (!val || val === data.user.nickname) return;
+    if (!val || val === savedNickname) return;
     nicknameSaving = true;
     try {
       const res = await fetch('/api/auth/nickname', {
@@ -1372,6 +1373,8 @@
       });
       if (res.ok) {
         data.user.nickname = val;
+        savedNickname = val;
+        nicknameInput = val;
       }
     } catch { /* ignore */ }
     nicknameSaving = false;
@@ -2672,7 +2675,7 @@
                       maxlength="50"
                       bind:value={nicknameInput}
                     />
-                    {#if nicknameInput.trim() && nicknameInput.trim() !== (data.user.nickname ?? '')}
+                    {#if nicknameInput.trim() && nicknameInput.trim() !== savedNickname}
                       <button type="submit" class="nickname-save" disabled={nicknameSaving}>
                         {nicknameSaving ? '...' : 'Save'}
                       </button>
