@@ -3043,11 +3043,11 @@
     line-height: 1.45;
   }
 
-  /* ── binder tabs (the landing page's nav, exactly) ── */
+  /* ── ribbon bookmarks (the landing page's nav, exactly) ── */
   .tabs {
     position: fixed;
     top: 0;
-    right: 5%;
+    right: 24px;
     z-index: 200;
     display: flex;
     align-items: flex-start;
@@ -3056,48 +3056,47 @@
 
   .tab {
     position: relative;
-    padding: 20px 16px 9px;
+    width: 72px;
+    padding: 29px 0 23px;
     border: 0;
-    border-radius: 0 0 10px 10px;
-    background: #dcd8cf;
-    box-shadow: 0 2px 3px rgb(0 0 0 / 0.15);
+    background: #c1bdb4;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 16px), 0 100%);
     color: var(--ink);
     font: inherit;
     font-size: 13px;
     font-weight: 500;
-    line-height: 1.45;
+    line-height: 18px;
+    text-align: center;
     text-decoration: none;
     cursor: pointer;
     transition: padding 0.15s;
   }
 
-  .tab:nth-child(2) { background: #cfd9e6; }
-  .tab:nth-child(3) { background: #e9dfc0; }
-  .tab:nth-child(4) { background: #e6cfd2; }
+  .tab:nth-child(2) { background: #9da5ea; }
+  .tab:nth-child(3) { background: #f8d495; }
+  .tab:nth-child(4) { background: #f2a7bf; }
 
   .tab:hover,
   .tab:focus-visible {
-    padding-top: 30px;
+    padding-top: 37px;
   }
 
   /* The page you're on stays pulled down. */
   .tab.active {
-    padding-top: 36px;
+    padding-top: 43px;
     font-weight: 700;
   }
 
   .tab-ink {
-    margin-left: 10px;
     background: var(--ink);
     color: #fff;
   }
 
-  /* The landing page folder's red badge. */
+  /* The landing page folder's red badge, tucked inside the ribbon so the notch doesn't clip it. */
   .tab-badge {
     position: absolute;
-    top: auto;
-    bottom: -9px;
-    right: -6px;
+    top: 6px;
+    right: 4px;
     padding: 1px 6px;
     border: 2px solid #fff;
     border-radius: 99px;
@@ -7089,10 +7088,10 @@
 
     .tab {
       flex: 1 1 0;
+      width: auto;
       min-width: 0;
-      padding: 16px 4px 8px;
+      padding: 16px 4px 22px;
       font-size: 12px;
-      text-align: center;
     }
 
     .tab:hover,
@@ -7102,10 +7101,6 @@
 
     .tab.active {
       padding-top: 24px;
-    }
-
-    .tab-ink {
-      margin-left: 4px;
     }
 
     .meta {

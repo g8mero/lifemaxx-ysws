@@ -15,10 +15,11 @@
   function nagFor(d: Date) {
     const h = d.getHours();
     const t = `${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}${h < 12 ? 'am' : 'pm'}`;
-    if (h < 5) return `it's ${t}. go to sleep.`;
+    if (h < 5) return `it's ${t}. go to sleep bro.`;
     if (h < 9) return `it's ${t}. you're up??`;
-    if (h < 15) return `it's ${t}. aren't you in class`;
-    if (h < 22) return `it's ${t}. homework can wait`;
+    if (h==12) return `it's ${t}. LUNCH TIME!`;
+    else if (h < 15) return `it's ${t}. lock in.`;
+    if (h < 22) return `it's ${t}. homework can wait...`;
     return `it's ${t}. one more commit`;
   }
 
@@ -179,7 +180,7 @@
     </figure>
     <figure class="cut m-whey" use:drag style="--w:clamp(110px,12.5vw,190px);--mw:104px;--r:5deg;--cap:16px;left:35.5%;top:4%">
       <img src="{C}/whey.webp" alt="" draggable="false" />
-      <figcaption class="picked">gains.png</figcaption>
+      <figcaption class="picked">gains.webp</figcaption>
     </figure>
     <figure class="cut folder on-indigo" use:drag style="--mw:92px" title="homework (unopened)">
       <svg viewBox="0 0 200 160" aria-hidden="true">
@@ -197,8 +198,8 @@
     </figure>
     <figure class="cut on-indigo m-matcha" use:drag style="--w:clamp(88px,9.6vw,146px);--mw:80px;--r:6deg;--cap:14px;left:34.6%;bottom:0.5%">
       <img src="{C}/matcha.webp" alt="" draggable="false" />
-      <figcaption>self_care.png</figcaption>
-      {@render note('$7. worth it.', 'left:150%;top:70%;--r:4deg;white-space:nowrap;color:var(--ink)', 'left:-0.2em;top:-0.25em;rotate:190deg')}
+      <figcaption>performative.png</figcaption>
+      {@render note("i swear it doesn't taste like grass", 'left:150%;top:70%;--r:4deg;white-space:nowrap;color:var(--ink)', 'left:-0.2em;top:-0.25em;rotate:190deg')}
     </figure>
     <figure class="cut m-hide" use:drag style="--w:clamp(88px,9vw,138px);--r:9deg;--cap:16px;right:38%;top:2.5%">
       <img src="{C}/airpods.webp" alt="" draggable="false" />
@@ -206,7 +207,7 @@
     </figure>
     <figure class="cut m-hide" use:drag style="--w:clamp(120px,13.5vw,205px);--r:-10deg;--cap:22px;right:3%;bottom:6%">
       <img src="{C}/dumbbell.webp" alt="" draggable="false" />
-      <figcaption>used_twice.png</figcaption>
+      <figcaption>used_twice.jpeg</figcaption>
     </figure>
 
     <div class="pitch">
@@ -229,8 +230,9 @@
               <li><label><input type="checkbox" /><span>habit tracker</span></label></li>
               <li><label><input type="checkbox" /><span>study timer that judges you</span></label></li>
               <li><label><input type="checkbox" /><span>gym log w/ streaks</span></label></li>
-              <li><label><input type="checkbox" /><span>homework but it's a game</span></label></li>
-              <li class="done"><s>chem homework</s></li>
+              <li class="done"><s>chem hw</s></li>
+              <li><label><input type="checkbox" /><span>gamified chem hw</span></label></li>
+              
             </ul>
           </div>
           <div class="page r">
@@ -296,18 +298,18 @@
     <section id="plan">
       <h2>the plan</h2>
       <div class="day">
-        <div class="slot"><time>9:00am</time><div class="event" style="--c:#3a4bd6"><b>Build the thing</b><span>Something that fixes one real problem in your own life.</span></div></div>
-        <div class="slot"><time>1:00pm</time><div class="event" style="--c:#35b25a"><b>Ship the thing</b><span>Put it somewhere people can use it.</span></div></div>
-        <div class="slot"><time>4:00pm</time><div class="event" style="--c:#f0a92b"><b>Get the stuff</b><span>We mail you fuel so you can keep going.</span></div>
+        <div class="slot"><time>9:00am</time><div class="event" style="--c:#3a4bd6"><b>build</b><span>...anything that gets you closer to reaching your goals.</span></div></div>
+        <div class="slot"><time>1:00pm</time><div class="event" style="--c:#35b25a"><b>ship it</b><span>make it open source so we can see how it works! </span></div></div>
+        <div class="slot"><time>4:00pm</time><div class="event" style="--c:#f0a92b"><b>refuel</b><span>spend your gains in the shop to keep you going :)</span></div>
           <div class="label" aria-hidden="true">
             <i class="tape"></i>
             <small>ship to</small><b>you. yes, you.</b>
             <small>from</small><b>hack club hq</b>
             <span class="bars"></span>
-            {@render note('straight to you', 'left:10%;top:158%;--r:-4deg;white-space:nowrap', 'left:42%;top:-0.95em;rotate:-82deg')}
+            {@render note('this is on us', 'left:10%;top:158%;--r:-4deg;white-space:nowrap', 'left:42%;top:-0.95em;rotate:-82deg')}
           </div>
         </div>
-        <div class="slot"><time>11:59pm</time><div class="event" style="--c:#d6161e"><b>Start the homework</b><span>Not part of the program. Just a reminder.</span></div>
+        <div class="slot"><time>11:59pm</time><div class="event" style="--c:#d6161e"><b>homework</b><span>you've got to do it at some point...</span></div>
         </div>
       </div>
     </section>
@@ -322,7 +324,7 @@
 
   <footer>
     <div class="torn"><i class="fibre"></i><i class="ink"></i></div>
-    <p class="big">go fix your life.</p>
+    <p class="big">time to lock in.</p>
     <span class="ctas"><a class="cta" href={SLACK}>join #lifemaxx <span aria-hidden="true">→</span></a><a class="cta" href={RSVP}>RSVP <span aria-hidden="true">→</span></a></span>
     <small>Made by teenagers avoiding homework, for <a href="https://hackclub.com/">Hack Club</a>, a 501(c)(3) nonprofit. · <a href="https://hackclub.com/slack">Join the Slack</a></small>
   </footer>
@@ -393,13 +395,15 @@
   .torn .ink { width: calc(43% + 80px); background: var(--indigo) var(--grain); filter: url(#tear-a); }
   .flag { position: absolute; top: 0; left: 16px; z-index: 5; width: clamp(140px, 17vw, 250px); transform-origin: 0 0; transition: rotate 0.2s; }
   .flag:hover { rotate: -4deg; }
-  .tabs { position: absolute; top: 0; right: 5%; z-index: 4; display: flex; align-items: flex-start; gap: 4px; }
-  .tabs a { padding: 20px 16px 9px; border-radius: 0 0 10px 10px; background: #dcd8cf; box-shadow: 0 2px 3px rgb(0 0 0 / 0.15); font-size: 13px; font-weight: 500; transition: padding 0.15s; }
-  .tabs a:hover, .tabs a:focus-visible { padding-top: 30px; }
-  .tabs a:nth-child(2) { background: #cfd9e6; }
-  .tabs a:nth-child(3) { background: #e9dfc0; }
-  .tabs a:nth-child(4) { background: #e6cfd2; }
-  .tabs .login { margin-left: 10px; background: var(--ink); color: #fff; }
+  .tabs { position: absolute; top: 0; right: 24px; z-index: 4; display: flex; align-items: flex-start; gap: 4px; }
+  /* 5 ribbons x 72px + 4 gaps = 376 x 70. */
+  .tabs a { width: 72px; padding: 29px 0 23px; background: #c1bdb4; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 16px), 0 100%); text-align: center; font-size: 13px; font-weight: 500; line-height: 18px; transition: padding 0.15s; }
+  .tabs a:hover, .tabs a:focus-visible { padding-top: 37px; }
+  /* Halfway between the plan's stripe and fill colours; grey and pink matched to them. */
+  .tabs a:nth-child(2) { background: #9da5ea; }
+  .tabs a:nth-child(3) { background: #f8d495; }
+  .tabs a:nth-child(4) { background: #f2a7bf; }
+  .tabs .login { background: var(--ink); color: #fff; }
 
   .build { position: absolute; left: 6%; top: 25%; z-index: 2; width: clamp(210px, 27vw, 400px); rotate: -2deg; }
   .sub { position: absolute; left: 13%; top: 50%; z-index: 2; rotate: -5deg; color: #fff; font-size: clamp(22px, 3.2vw, 48px); letter-spacing: -0.02em; line-height: 1.45; }
