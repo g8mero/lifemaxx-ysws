@@ -111,16 +111,6 @@ export class ProjectsController {
     return this.projectsService.findApprovedProjects();
   }
 
-  /**
-   * Public endpoint used by the shipping guide page.
-   * Returns average time-to-first-review per project type.
-   */
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @Get('review-stats')
-  async reviewStats() {
-    return this.projectsService.getReviewStats();
-  }
-
   @Throttle({ default: { limit: 15, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
   @Get('explore/:id')

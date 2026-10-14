@@ -103,9 +103,9 @@ the neutral scale is fixed, chosen deliberately to avoid the generic AI-slop tel
 zinc/slate, cream backgrounds, purple/blue gradients). If you want a different neutral palette,
 edit the `:root` block directly.
 
-Most of beest's original UI still has its own hardcoded colors in per-component `<style>` blocks
-(it never had a central stylesheet) rather than referencing these tokens yet — see `PROGRESS.md` for
-the state of that migration if you're picking this work up.
+The admin pages still use these tokens. The logged-in participant pages (`frontend/src/routes/home/+page.svelte`)
+remap them to the landing page's paper-and-ink palette on `.home` / `html.lm-app`; see
+`.claude/lifemaxx-design.md` for those rules.
 
 ## 6. What's genuinely Hack-Club-specific vs. generic
 

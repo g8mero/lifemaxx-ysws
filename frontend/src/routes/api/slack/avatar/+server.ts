@@ -4,8 +4,6 @@ import type { RequestHandler } from './$types';
 
 const BACKEND_URL = env.BACKEND_URL ?? 'http://localhost:3001';
 
-export const POST: RequestHandler = async ({ cookies }) => {
-	return proxyWithRefresh(cookies, `${BACKEND_URL}/api/onboarding/mark-onboarded`, {
-		method: 'POST'
-	});
+export const GET: RequestHandler = async ({ cookies }) => {
+	return proxyWithRefresh(cookies, `${BACKEND_URL}/api/slack/avatar`);
 };

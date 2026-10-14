@@ -11,6 +11,8 @@ type RawSlackUser = {
     display_name?: unknown;
     real_name_normalized?: unknown;
     real_name?: unknown;
+    image_192?: unknown;
+    image_72?: unknown;
   } | null;
 };
 
@@ -82,6 +84,14 @@ export class SlackService {
   async getUserUsername(slackId: string): Promise<string | null> {
     const user = await this.usersInfo(slackId);
     return str(user?.name) || null;
+  }
+
+  /** The user's Slack profile photo URL (192px), or null when unavailable. */
+  async getUserAvatar(slackId: string): Promise<string | null> {
+    const user = await this.usersInfo(slackId);
+    const url = str(user?.profile?.image_192) || str(user?.profile?.image_72);
+    // Without a bot token (or if Slack fails), use cachet, Hack Club's public Slack avatar service.
+    return url || `https://cachet.dunkirk.sh/users/${encodeURIComponent(slackId)}/r`;
   }
 
   private async usersInfo(slackId: string): Promise<RawSlackUser | null> {
