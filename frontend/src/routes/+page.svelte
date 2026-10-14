@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
+  let { data } = $props();
+
 
   const SLACK = 'https://hackclub.slack.com/app_redirect?channel=lifemaxx';
   const RSVP = 'https://rsvp.soon.it/lifemaxx';
@@ -159,7 +161,7 @@
       <a href="#we-ship">we ship</a>
       <a href="#plan">the plan</a>
       <a href="#faq">faq</a>
-      <a class="login" href="/api/auth/login">log in</a>
+      {#if !data.landingOnly}<a class="login" href="/api/auth/login">log in</a>{/if}
     </nav>
 
     <img class="build" src="{C}/build.webp" alt="Build" width="1031" height="457" />
