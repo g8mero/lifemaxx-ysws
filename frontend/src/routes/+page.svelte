@@ -151,11 +151,20 @@
   <svg class="filters" aria-hidden="true">
     <filter id="tear-a" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".012 .03" numOctaves="3" seed="4" /><feDisplacementMap in="SourceGraphic" scale="46" /><feGaussianBlur stdDeviation="0.9" /><feComponentTransfer><feFuncA type="linear" slope="4" intercept="-1.5" /></feComponentTransfer></filter>
     <filter id="tear-b" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".02 .05" numOctaves="3" seed="11" /><feDisplacementMap in="SourceGraphic" scale="40" /><feGaussianBlur stdDeviation="0.9" /><feComponentTransfer><feFuncA type="linear" slope="4" intercept="-1.5" /></feComponentTransfer></filter>
+    <pattern id="grain" width="300" height="300" patternUnits="userSpaceOnUse"><image width="300" height="300" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E" /></pattern>
     <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" seed="7" /><feDisplacementMap in="SourceGraphic" scale="5" /><feGaussianBlur stdDeviation="0.9" /><feComponentTransfer><feFuncA type="linear" slope="4" intercept="-1.5" /></feComponentTransfer></filter>
   </svg>
 
+  <!-- The tear is filtered inside SVG, not with CSS filter on a div: iOS Safari runs a CSS filter per render tile, so zooming in shows seams. -->
+  {#snippet torn()}
+    <div class="torn" aria-hidden="true">
+      <i class="fibre"><svg><rect class="paint" width="100%" height="100%" filter="url(#tear-b)" /></svg></i>
+      <i class="ink"><svg><g filter="url(#tear-a)"><rect class="paint" width="100%" height="100%" /><rect width="100%" height="100%" fill="url(#grain)" /></g></svg></i>
+    </div>
+  {/snippet}
+
   <header class="hero" id="top">
-    <div class="torn"><i class="fibre"></i><i class="ink"></i></div>
+    {@render torn()}
     <a class="flag" href="https://hackclub.com/"><img src="https://assets.hackclub.com/flag-orpheus-top.svg" alt="Hack Club" /></a>
     <nav class="tabs" aria-label="Sections">
       <a href="#you-ship">you ship</a>
@@ -178,7 +187,7 @@
       <img src="{C}/hl-yellow.webp" alt="" draggable="false" />
       <figcaption>study_guide_FINAL.png</figcaption>
     </figure>
-    <figure class="cut m-whey" use:drag style="--w:clamp(110px,12.5vw,190px);--mw:104px;--r:5deg;--cap:16px;left:35.5%;top:4%">
+    <figure class="cut m-whey" use:drag style="--w:clamp(110px,12.5vw,190px);--mw:93px;--r:5deg;--cap:16px;left:35.5%;top:4%">
       <img src="{C}/whey.webp" alt="" draggable="false" />
       <figcaption class="picked">gains.webp</figcaption>
     </figure>
@@ -323,7 +332,7 @@
   </main>
 
   <footer>
-    <div class="torn"><i class="fibre"></i><i class="ink"></i></div>
+    {@render torn()}
     <p class="big">time to lock in.</p>
     <span class="ctas"><a class="cta" href={SLACK}>join #lifemaxx <span aria-hidden="true">→</span></a><a class="cta" href={RSVP}>RSVP <span aria-hidden="true">→</span></a></span>
     <small>Made by teenagers avoiding homework, for <a href="https://hackclub.com/">Hack Club</a>, a 501(c)(3) nonprofit. · <a href="https://hackclub.com/slack">Join the Slack</a></small>
@@ -391,8 +400,11 @@
   .torn { position: absolute; inset: 0 0 -70px 0; overflow: hidden; pointer-events: none; }
   .torn i { position: absolute; left: -80px; top: -80px; bottom: 44px; }
   .torn .fibre { bottom: 32px; }
-  .torn .fibre { width: calc(43% + 96px); background: #fff; filter: url(#tear-b); }
-  .torn .ink { width: calc(43% + 80px); background: var(--indigo) var(--grain); filter: url(#tear-a); }
+  .torn .fibre { width: calc(43% + 96px); }
+  .torn .ink { width: calc(43% + 80px); }
+  .torn svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .torn .fibre .paint { fill: #fff; }
+  .torn .ink .paint { fill: var(--indigo); }
   .flag { position: absolute; top: 0; left: 16px; z-index: 5; width: clamp(140px, 17vw, 250px); transform-origin: 0 0; transition: rotate 0.2s; }
   .flag:hover { rotate: -4deg; }
   .tabs { position: absolute; top: 0; right: 24px; z-index: 4; display: flex; align-items: flex-start; gap: 4px; }
@@ -464,8 +476,9 @@
   .page input:checked + span { text-decoration: line-through; opacity: 0.55; }
   .page .done { padding-left: 0.85em; opacity: 0.55; }
   .page mark { padding: 0 0.1em; background: linear-gradient(transparent 18%, rgb(255 60 170 / 0.42) 18% 86%, transparent 86%); }
-  .sticky { position: absolute; right: -11cqw; top: -10cqw; z-index: 3; width: 23cqw; aspect-ratio: 1; display: grid; place-items: center; rotate: 6deg; background: #ffe76a; box-shadow: 0 0.6cqw 1cqw rgb(0 0 0 / 0.2); }
-  .sticky img { width: auto; height: 82%; }
+  .sticky { position: absolute; right: -11cqw; top: -10cqw; z-index: 3; width: 23cqw; height: 23cqw; display: grid; place-items: center; rotate: 6deg; background: #ffe76a; box-shadow: 0 0.6cqw 1cqw rgb(0 0 0 / 0.2); }
+  /* A % height here falls back to the image's natural height in iOS Safari and stretches the note. */
+  .sticky img { width: auto; height: 19cqw; }
   .c-hl { --w: clamp(120px, 27cqw, 210px); left: -11%; top: 1%; }
   .c-pen { --w: clamp(14px, 3.1cqw, 24px); right: 13%; bottom: -19%; }
   .alarms { --w: 150px; right: -22%; top: 34%; rotate: var(--r); padding: 6px 12px; border-radius: 12px; background: #000; color: #fff; font-size: 22px; font-weight: 300; line-height: 1.2; box-shadow: 0 6px 12px rgb(0 0 0 / 0.25); }
@@ -543,7 +556,7 @@
     .pitch { position: relative; left: auto; right: auto; top: auto; translate: none; padding: 400px 24px 0; }
     h1 { font-size: 16.5vw; }
     .hero .cut { --w: var(--mw) !important; }
-    .m-whey { left: auto !important; right: 4%; top: 58px !important; }
+    .m-whey { left: auto !important; right: 4%; top: 52px !important; }
     .m-matcha { left: auto !important; right: 9%; bottom: auto !important; top: 232px; }
     .hero .folder { left: 6%; bottom: auto; top: 284px; }
     .desk { margin-top: 40px; }
