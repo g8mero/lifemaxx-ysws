@@ -335,7 +335,10 @@
         method: 'POST'
       });
       if (!res.ok) {
-        buildlogError = 'Could not start a timelapse recording right now.';
+        // 503: the backend has no LOOKOUT_API_KEY, so timelapses aren't set up for this program.
+        buildlogError = res.status === 503
+          ? "Timelapse recording isn't set up for this program yet."
+          : 'Could not start a timelapse recording right now.';
         return;
       }
       const { id, token } = await res.json();
@@ -2007,21 +2010,23 @@
         <!-- The plan: one line through every project, solid where you've shipped. -->
         {#if projects.length > 0}
         <ol class="plan">
-          {#each projects as project, i}
+          {#each projects as project}
             {@const logs = buildlogs.filter((b) => b.projectId === project.id).slice(0, 3)}
-            <li class="stop" class:shipped={project.status === 'approved'}>
-              <span class="stop-meta"><small>{project.projectType}</small>{String(i + 1).padStart(2, '0')}</span>
+            {@const hasPhoto = !!(project.screenshot1Url || catImages[project.id])}
+            <li class="stop" class:shipped={project.status === 'approved'} class:no-photo={!hasPhoto}>
               <button class="stop-body project-card status-{project.status}" onclick={() => openEditProject(project)}>
-                <span class="fan" aria-hidden="true">
-                  {#if project.screenshot2Url}<img class="fan-back" src={project.screenshot2Url} alt="" />{/if}
-                  {#if project.screenshot1Url}
-                    <img src={project.screenshot1Url} alt="" />
-                  {:else if catImages[project.id]}
-                    <img class="fan-cat" src={catImages[project.id]} alt="" />
-                  {/if}
-                </span>
+                {#if hasPhoto}
+                  <span class="fan" aria-hidden="true">
+                    {#if project.screenshot2Url}<img class="fan-back" src={project.screenshot2Url} alt="" />{/if}
+                    {#if project.screenshot1Url}
+                      <img src={project.screenshot1Url} alt="" />
+                    {:else}
+                      <img class="fan-cat" src={catImages[project.id]} alt="" />
+                    {/if}
+                  </span>
+                {/if}
                 <span class="stop-title">
-                  {project.name}
+                  <span class="stop-name">{project.name}</span>
                   <em class="flag flag-{project.status}">{STATUS_LABEL[project.status] ?? project.status}</em>
                   {#if project.isGolden}<em class="flag flag-golden">golden</em>{/if}
                 </span>
@@ -3422,7 +3427,6 @@
 
   /* ── dashboard: the plan ─────────────────────────── */
   .plan {
-    --gutter: 64px;
     position: relative;
     margin: 56px 0 0;
     padding: 0;
@@ -3430,75 +3434,23 @@
   }
 
   .stop {
-    position: relative;
-    display: grid;
-    grid-template-columns: var(--gutter) 24px minmax(0, 1fr);
-    padding-bottom: 40px;
+    padding-bottom: 36px;
   }
 
-  /* Each stop draws its own stretch of line: dotted ahead, solid blue once shipped. */
-  .stop::before {
-    content: '';
-    position: absolute;
-    left: calc(var(--gutter) + 11px);
-    top: 0;
-    bottom: 0;
-    border-left: 1.5px dotted var(--faint);
+  .stop.no-photo .stop-body {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  /* The line ends at the last project's ring. */
-  .stop:last-child::before {
-    bottom: auto;
-    height: 12px;
-  }
-
-  .stop.shipped::before {
-    border-left-style: solid;
-    border-left-color: var(--blue);
-  }
-
-  /* The ring on the line. */
-  .stop::after {
-    content: '';
-    position: absolute;
-    left: calc(var(--gutter) + 6px);
-    top: 8px;
-    width: 9px;
-    height: 9px;
-    border: 1.5px solid var(--faint);
-    border-radius: 50%;
-    background: var(--paper);
-  }
-
-  .stop.shipped::after {
-    border-color: var(--blue);
-    background: radial-gradient(var(--blue) 0 2.5px, var(--paper) 3px);
-  }
-
-  .stop-meta {
+  .stop.no-photo .stop-title,
+  .stop.no-photo .stop-desc {
     grid-column: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    padding-top: 0;
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    line-height: 1.1;
-    font-variant-numeric: tabular-nums;
   }
 
-  .stop-meta small {
-    color: var(--faint);
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
+  .stop.no-photo .sub {
+    margin-left: 0;
   }
 
   .stop-body {
-    grid-column: 3;
     display: grid;
     grid-template-columns: 96px minmax(0, 1fr);
     grid-template-rows: auto 1fr;
@@ -3567,7 +3519,7 @@
     letter-spacing: -0.02em;
   }
 
-  .stop-body:hover .stop-title {
+  .stop-body:hover .stop-name {
     text-decoration: underline;
     text-decoration-color: var(--rule);
     text-underline-offset: 4px;
@@ -3602,30 +3554,14 @@
     -webkit-box-orient: vertical;
   }
 
-  /* A project's buildlogs hang off the line on small dots. */
+  /* A project's latest buildlogs, under its description. */
   .sub {
-    grid-column: 3;
     position: relative;
     display: flex;
     gap: 10px;
     align-items: baseline;
     margin: 10px 0 0 114px;
     font-size: 13px;
-  }
-
-  .sub::before {
-    content: '';
-    position: absolute;
-    left: -129px;
-    top: 7px;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--faint);
-  }
-
-  .stop.shipped .sub::before {
-    background: var(--blue);
   }
 
   .sub-title {
@@ -7197,14 +7133,6 @@
       border-top: 1px solid var(--rule);
     }
 
-    .plan {
-      --gutter: 34px;
-    }
-
-    .stop-meta small {
-      display: none;
-    }
-
     .stop-body {
       grid-template-columns: 72px minmax(0, 1fr);
       column-gap: 14px;
@@ -7218,10 +7146,6 @@
 
     .sub {
       margin-left: 86px;
-    }
-
-    .sub::before {
-      left: -101px;
     }
 
     .note-empty {
