@@ -39,26 +39,40 @@
   let selA = $state(5);
   let selB = $state(TITLE.length);
   let h1: HTMLElement;
+  // The highlight is an overlay, not a span around the letters, so moving it
+  // never splits the text and the letters (and their kerning) stay put.
+  // gaps: x of every gap between letters, relative to the h1.
+  let box = $state({ gaps: [] as number[], top: 0, height: 0 });
+
+  function measure() {
+    const text = h1.firstChild!;
+    const o = h1.getBoundingClientRect();
+    const range = document.createRange();
+    const gaps: number[] = [];
+    let r = o;
+    for (let i = 0; i < TITLE.length; i++) {
+      range.setStart(text, i);
+      range.setEnd(text, i + 1);
+      r = range.getBoundingClientRect();
+      gaps.push(r.left - o.left);
+    }
+    gaps.push(r.right - o.left);
+    box = { gaps, top: r.top - o.top, height: r.height };
+  }
+
+  onMount(() => {
+    // re-measure when the clamp()ed font size changes or the web font lands
+    const ro = new ResizeObserver(measure);
+    ro.observe(h1);
+    return () => ro.disconnect();
+  });
 
   function grab(e: PointerEvent, end: 'a' | 'b') {
     e.preventDefault();
     const handle = e.currentTarget as HTMLElement;
     handle.setPointerCapture(e.pointerId);
-    // x of every gap between letters; the text never reflows, so measure once
-    const xs: number[] = [];
-    const range = document.createRange();
-    const walker = document.createTreeWalker(h1, NodeFilter.SHOW_TEXT);
-    let right = 0;
-    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-      for (let i = 0; i < (n.textContent ?? '').length; i++) {
-        range.setStart(n, i);
-        range.setEnd(n, i + 1);
-        const r = range.getBoundingClientRect();
-        xs.push(r.left);
-        right = r.right;
-      }
-    }
-    xs.push(right);
+    const left = h1.getBoundingClientRect().left;
+    const xs = box.gaps.map((g) => g + left);
     const move = (ev: PointerEvent) => {
       let best = 0;
       for (let i = 1; i < xs.length; i++) if (Math.abs(xs[i] - ev.clientX) < Math.abs(xs[best] - ev.clientX)) best = i;
@@ -212,7 +226,7 @@
     </figure>
 
     <div class="pitch">
-      <h1 bind:this={h1}>{TITLE.slice(0, selA)}<span class="sel"><b onpointerdown={(e) => grab(e, 'a')}></b>{TITLE.slice(selA, selB)}<b onpointerdown={(e) => grab(e, 'b')}></b></span>{TITLE.slice(selB)}</h1>
+      <h1 bind:this={h1}>{TITLE}{#if box.gaps.length}<span class="sel" aria-hidden="true" style:left="{box.gaps[selA]}px" style:width="calc({box.gaps[selB] - box.gaps[selA]}px + 0.04em)" style:top="{box.top}px" style:height="{box.height}px"><b onpointerdown={(e) => grab(e, 'a')}></b><b onpointerdown={(e) => grab(e, 'b')}></b></span>{/if}</h1>
       <p>ys: something that helps you complete your goals</p>
       <p>ws: resources to help you get them done</p>
       <p class="cats">coffee - school supplies - tech - workout stuff</p>
@@ -414,14 +428,17 @@
   .dash { position: absolute; left: 0; top: 70%; z-index: 1; width: 23%; height: 9%; fill: none; stroke: #fff; stroke-width: 2.5; stroke-dasharray: 9 9; vector-effect: non-scaling-stroke; }
 
   .pitch { position: absolute; left: 52%; right: 4%; top: 50%; z-index: 3; translate: 0 -50%; }
-  h1 { font-size: clamp(54px, 8.6vw, 148px); font-weight: 900; letter-spacing: -0.055em; line-height: 0.95; white-space: nowrap; }
-  h1 .sel { position: relative; margin-right: -0.04em; padding: 0 0.04em 0 0; background: linear-gradient(90deg, transparent 0.035em, rgb(60 130 255 / 0.28) 0.035em); }
+  h1 { font-size: clamp(54px, 8.6vw, 148px); font-weight: 900; letter-spacing: -0.055em; line-height: 0.95; white-space: nowrap; position: relative; width: fit-content; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  /* fit-content: the box tracks the text, so the ResizeObserver re-measures when the web font swaps in.
+     user-select: none: a long-press must not start a real selection fighting the fake one. */
+  h1 .sel { position: absolute; background: linear-gradient(90deg, transparent 0.035em, rgb(60 130 255 / 0.28) 0.035em); }
   h1 .sel::before, h1 .sel::after { content: ''; position: absolute; top: -4%; bottom: -4%; width: 3px; background: var(--blue); }
   h1 .sel::before { left: 0.035em; translate: -50% 0; }
   h1 .sel::after { right: -1px; }
   h1 .sel b { position: absolute; z-index: 1; width: 0.13em; height: 0.13em; border-radius: 50%; background: var(--blue); touch-action: none; }
   /* invisible grab area covering the whole bar, not just the dot */
   h1 .sel b::after { content: ''; position: absolute; left: -0.1em; right: -0.1em; height: 1.2em; }
+  @media (pointer: coarse) { h1 .sel b::after { left: -0.3em; right: -0.3em; } }
   h1 .sel b:first-child::after { top: 0; }
   h1 .sel b:last-child::after { bottom: 0; }
   .lm h1 .sel b { cursor: ew-resize; }
