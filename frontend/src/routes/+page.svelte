@@ -183,9 +183,9 @@
       <figcaption>practice_at_6.png</figcaption>
       {@render note('keeping me sane', 'right:100%;top:80%;--r:-6deg;color:#fff;white-space:nowrap', 'left:86%;top:-0.95em;rotate:-36deg')}
     </figure>
-    <figure class="cut on-indigo m-hide" use:drag style="--w:clamp(150px,16vw,240px);--r:-27deg;--cap:58px;left:3.5%;bottom:9%">
-      <img src="{C}/hl-yellow.webp" alt="" draggable="false" />
-      <figcaption>study_guide_FINAL.png</figcaption>
+    <figure class="cut on-indigo m-hide" use:drag style="--w:clamp(132px,13.5vw,207px);--r:9deg;--cap:16px;left:3.5%;bottom:9%">
+      <img src="{C}/airpods.png" alt="" draggable="false" />
+      <figcaption>do_not_disturb.png</figcaption>
     </figure>
     <figure class="cut m-whey" use:drag style="--w:clamp(110px,12.5vw,190px);--mw:93px;--r:5deg;--cap:16px;left:35.5%;top:4%">
       <img src="{C}/whey.webp" alt="" draggable="false" />
@@ -208,15 +208,7 @@
     <figure class="cut on-indigo m-matcha" use:drag style="--w:clamp(88px,9.6vw,146px);--mw:80px;--r:6deg;--cap:14px;left:34.6%;bottom:0.5%">
       <img src="{C}/matcha.webp" alt="" draggable="false" />
       <figcaption>performative.png</figcaption>
-      {@render note("i swear it doesn't taste like grass", 'left:150%;top:70%;--r:4deg;white-space:nowrap;color:var(--ink)', 'left:-0.2em;top:-0.25em;rotate:190deg')}
-    </figure>
-    <figure class="cut m-hide" use:drag style="--w:clamp(88px,9vw,138px);--r:9deg;--cap:16px;right:38%;top:2.5%">
-      <img src="{C}/airpods.webp" alt="" draggable="false" />
-      <figcaption>do_not_disturb.png</figcaption>
-    </figure>
-    <figure class="cut m-hide" use:drag style="--w:clamp(120px,13.5vw,205px);--r:-10deg;--cap:22px;right:3%;bottom:6%">
-      <img src="{C}/dumbbell.webp" alt="" draggable="false" />
-      <figcaption>used_twice.jpeg</figcaption>
+      {@render note("doesn't taste like grass btw", 'left:150%;top:70%;--r:4deg;white-space:nowrap;color:var(--ink)', 'left:-0.2em;top:-0.25em;rotate:190deg')}
     </figure>
 
     <div class="pitch">
@@ -315,7 +307,6 @@
             <small>ship to</small><b>you. yes, you.</b>
             <small>from</small><b>hack club hq</b>
             <span class="bars"></span>
-            {@render note('this is on us', 'left:10%;top:158%;--r:-4deg;white-space:nowrap', 'left:42%;top:-0.95em;rotate:-82deg')}
           </div>
         </div>
         <div class="slot"><time>11:59pm</time><div class="event" style="--c:#d6161e"><b>homework</b><span>you've got to do it at some point...</span></div>
